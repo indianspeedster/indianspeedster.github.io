@@ -8,23 +8,53 @@ body {
     color: #333;
 }
 
-
 /* Layout */
-
 .container {
     margin-left: auto;
     margin-right: auto;
     padding-left: 15px;
     padding-right: 15px;
 }
+@media (min-width: 992px) {
+    .container {
+        width: 970px;
+     }
+}
+.row {
+    display: grid;
+    grid-template-columns: repeat(12, 1fr);
+}
 
+/* Props */
+#dhead {
+    margin-top: 20px;
+}
+#dpic {
+    grid-column: span 6;
+    text-align: right;
+}
+#ddesc {
+    padding-top: 40px;
+    padding-left: 20px;
+    grid-column: span 6;
+}
+@media (max-width: 991px) {
+    #dpic {
+      grid-column: span 12;
+      text-align: center;
+    }
+    #ddesc {
+      grid-column: span 12;
+      padding-top: 20px;
+      text-align: center;
+    }
+}
 h1 {
     font-size: 34px;
     font-weight: normal;
     padding: 0;
     margin: 0;
 }
-
 h2 {
     font-weight: normal;
     font-style: italic;
@@ -33,147 +63,186 @@ h2 {
     padding: 0;
     margin: 5px 0 10px 0;
 }
-
 @media (min-width: 992px) {
-    .container {
-        width: 970px;
+    h2 {
+        max-width: 300px;
     }
 }
-
-.top-row {
-    display: grid;
-    /* grid-template-columns: repeat(12, 1fr); */
+#dpic img {
+    width: 240px;
+    height: 240px;
+    border-radius: 120px;
 }
-
-.row {
-    padding-top: 7px;
-    padding-bottom: 7px;
-}
-
-a {
-    color: #1772d0;
-    text-decoration: none;
-}
-
-a:focus,
-a:hover {
-    color: #f09228;
-    text-decoration: none;
-}
-
-hr {
-    border: 0;
-    height: 1px;
-    background: #333;
-    background-image: linear-gradient(to right, #ccc, #333, #ccc);
-}
-
-strong {
-    font-family: sans-serif;
-    font-size: 16px;
-}
-
-heading {
-    font-family: sans-serif;
-    font-size: 24px;
-}
-
-papertitle {
-    font-family: sans-serif;
-    font-size: 16px;
-    font-weight: 700
-}
-
-venue {
-    font-family: sans-serif;
-    font-style: italic
-}
-
-name {
-    font-family: sans-serif;
-    font-size: 40px;
-}
-
-email {
-    font-family: sans-serif;
-    font-size: 16px;
-    color: #666;
-}
-
-.one {
-    width: 160px;
-    height: 160px;
-    position: relative;
-}
-
-.two {
-    width: 160px;
-    height: 160px;
-    position: absolute;
-    transition: opacity .2s ease-in-out;
-    -moz-transition: opacity .2s ease-in-out;
-    -webkit-transition: opacity .2s ease-in-out;
-}
-
-.fade {
-    transition: opacity .2s ease-in-out;
-    -moz-transition: opacity .2s ease-in-out;
-    -webkit-transition: opacity .2s ease-in-out;
-}
-
-span.highlight {
-    background-color: #ffffd0;
-}
-
 .iico {
     width: 40px;
     height: 40px;
 }
-
 #demail {
     margin-top: 10px;
     color: #555;
     opacity: 0;
     transition: opacity 0.7s;
 }
-
-#dhead {
-    margin-top: 20px;
+hr {
+    height: 1px;
+    background-image: -webkit-linear-gradient(left, rgba(0,0,0,0), rgba(0,0,0,0.75), rgba(0,0,0,0));
+    background-image:    -moz-linear-gradient(left, rgba(0,0,0,0), rgba(0,0,0,0.75), rgba(0,0,0,0));
+    background-image:     -ms-linear-gradient(left, rgba(0,0,0,0), rgba(0,0,0,0.75), rgba(0,0,0,0));
+    background-image:      -o-linear-gradient(left, rgba(0,0,0,0), rgba(0,0,0,0.75), rgba(0,0,0,0));
+    padding: 0;
+    margin: 20px 0px 20px 0px;
+    border: 0;
 }
-
-#dpic {
-    grid-column: span 6;
-    text-align: center;
-    padding-top: 10px;
+.ico {
+    grid-column: span 1;
+    vertical-align: top;
+    border-left: 2px solid #cfcfcf;
+    position: relative;
 }
-
-#dpic img {
-    width: 240px;
-    height: 240px;
-    border-radius: 120px;
+.ico img {
+    border-radius: 5px;
+    width: 100%;
+    max-width: 80px;
+    margin-left: 10px;
 }
-
-@media (max-width: 991px) {
-    #dpic {
-        grid-column: span 12;
-        text-align: center;
-    }
-    #ddesc {
-        grid-column: span 12;
-        padding-top: 20px;
-        text-align: center;
-    }
-}
-
-#ddesc {
-    padding-top: 20px;
+.desc {
+    grid-column: span 10;
+    vertical-align: top;
+    font-size: 17px;
     padding-left: 20px;
-    text-align: center;
+    padding-bottom: 20px;
 }
-
-#bottom {
-    padding-top: 20px;
-    padding-bottom: 50px;
+.entry {
+}
+.entry-dot {
+    position: absolute;
+    top: 0px;
+    left: -8px;
+    width: 10px;
+    height: 10px;
+    border-radius: 7px;
+    background-color: #cfcfcf;
+    border: 2px solid white;
+}
+.timespan {
+    grid-column: span 1;
+    font-size: 14px;
+    text-align: right;
+    padding-right: 5px;
+    color: #bbb;
+}
+.hassets {
+    position: relative;
+}
+@media (max-width: 991px) {
+    .hassets {
+        display: none;
+    }
+}
+.hasset {
+    position: absolute;
+    margin: 0;
+    padding: 0;
+}
+.ctitle {
+    font-size: 36px;
+    margin-bottom: 20px;
+    margin-top: 40px;
+}
+#featured-talks .row {
+    grid-column-gap: 10px;
+    grid-row-gap: 10px;
+    padding-bottom: 30px;
+}
+.card {
+    grid-column: span 3;
+    vertical-align: top;
+    background-color: #eee;
+    border: 1px solid #ddd;
+    border-radius: 3px;
+    padding: 5px;
+    background-color: white;
+    padding-bottom: 10px;
+}
+@media (max-width: 991px) {
+    .card {
+        grid-column: span 6;
+    }
+    #featured-talks .row {
+        grid-column-gap: 5px;
+        grid-row-gap: 5px;
+    }
+}
+.card img {
+    border-radius: 5px;
+    width: 100%;
+}
+.cdesc {
+    height: 30px;
+    vertical-align: top;
+    margin-bottom: 10px;
+    font-size: 15px;
+}
+@media (max-width: 768px) {
+    .cdesc {
+        font-size: 14px;
+        padding-bottom: 10px;
+    }
+}
+#pet-projects .row {
+    grid-column-gap: 10px;
+    grid-row-gap: 10px;
+}
+.project {
+    margin-bottom: 10px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #eee;
+}
+.pico {
+    float: left;
+    margin-right: 10px;
+}
+.pdesc {
+}
+.pend {
+    clear: both;
+}
+.pico img {
+    height: 80px;
+    border-radius: 5px;
+    border: 1px solid #999;
+}
+.pub {
+    font-size: 14px;
+    border-left: 4px solid #aaa;
+    padding: 2px 0px 2px 10px;
+    margin-bottom: 10px;
+}
+.pub-title {
+    display: inline;
+    color: #333;
+}
+.pub-venue {
+    display: inline;
+    color: #090;
+}
+.pub-authors {
+    display: block;
+    color: #900;
+}
+.tul {
     text-align: center;
-    color: #666;
+    padding: 0;
+}
+.til {
+    display: inline-block;
+    padding: 3px 15px 3px 15px;
+    margin-bottom: 5px;
+}
+.tilb {
+    border-right: 1px solid #ccc;
+}
+.nodot {
+    list-style-type: none;
+    padding-left: 0;
 }
