@@ -1,0 +1,10 @@
+---
+import { profile } from '../data/site';
+const year = new Date().getFullYear();
+---
+
+<footer class="footer">
+  <div class="wrap">
+    © {year} {profile.name} · built with <a href="https://astro.build">Astro</a>
+  </div>
+</footer>
