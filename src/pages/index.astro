@@ -1,6 +1,6 @@
 ---
 import Base from '../layouts/Base.astro';
-import { profile, socials, experience, projects, publications } from '../data/site';
+import { profile, socials, work, education, projects, publications } from '../data/site';
 import { getCollection } from 'astro:content';
 
 const posts = (await getCollection('blog'))
@@ -35,9 +35,31 @@ const fmt = (d: Date) =>
 
   <!-- Experience -->
   <section id="work">
-    <h2 class="section-title">work &amp; education</h2>
+    <h2 class="section-title">experience</h2>
     <div class="timeline">
-      {experience.map((e) => (
+      {work.map((e) => (
+        <div class="tl-item">
+          <div class="tl-period">{e.period}</div>
+          <div>
+            <span class="tl-role">{e.role}</span>
+            {' · '}
+            {e.orgUrl ? (
+              <a class="tl-org" href={e.orgUrl} target="_blank" rel="noopener">{e.org}</a>
+            ) : (
+              <span class="tl-org">{e.org}</span>
+            )}
+          </div>
+          <p class="tl-blurb">{e.blurb}</p>
+        </div>
+      ))}
+    </div>
+  </section>
+
+  <!-- Education -->
+  <section id="education">
+    <h2 class="section-title">education</h2>
+    <div class="timeline">
+      {education.map((e) => (
         <div class="tl-item">
           <div class="tl-period">{e.period}</div>
           <div>
