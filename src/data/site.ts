@@ -11,7 +11,7 @@ export const profile = {
     "I work at the intersection of machine learning and systems — writing GPU kernels, " +
     "tuning inference paths, and training large models. Recently focused on quantization, " +
     "ROCm/CUDA kernels, and reinforcement-learning post-training for LLMs and VLMs.",
-  location: 'New York, USA',
+  location: 'San Jose, CA',
   photo: '/shekhar.jpg',
   resume: 'https://www.overleaf.com/read/ygwkpfgcysym#cf0b59',
   email: '', // optional: set to show a mailto link, e.g. 'you@example.com'
@@ -34,49 +34,36 @@ export type Experience = {
 
 export const experience: Experience[] = [
   {
+    role: 'Sr. Software Development Engineer',
+    org: 'AMD',
+    orgUrl: 'https://www.amd.com',
+    period: 'Jan 2025 – Present · San Jose, CA',
+    blurb:
+      'GPU performance & ML systems. Optimized large-scale MoE pre-training on MI325X clusters — FP8 grouped-GEMM kernels and Expert Parallelism hitting 96% scaling efficiency at 1K GPUs for DeepSeek-V3-671B. Co-authored TorchTitan/Primus-Turbo results showing a 2.77× end-to-end training speedup, shipped FP8/MXFP8 kernels to TorchAO (25–27% kernel speedup), and enabled Day-0 support for gpt-oss-120B/20B on ROCm via vLLM and PyTorch.',
+  },
+  {
     role: 'Machine Learning Intern',
     org: 'Bytez',
-    period: 'Feb 2024 – Present',
+    orgUrl: 'https://bytez.com',
+    period: 'Feb 2024 – May 2024 · San Francisco, CA',
     blurb:
-      'Upgraded an LLM chatbot with retrieval-augmented generation and semantic search over a vector DB — improved answer accuracy and cut token misuse by rejecting out-of-scope queries.',
+      'Fine-tuned CodeLlama-13B into a text-to-Cypher model behind an interactive chat feature, and built semantic search with a Neo4j vector store over ~3M research papers.',
   },
   {
-    role: 'ML Reproducibility Fellow',
-    org: 'UC Santa Cruz — Summer of Reproducibility',
-    orgUrl: 'https://ucsc-ospo.github.io/sor23/',
-    period: 'May 2023 – Aug 2023',
-    blurb:
-      'Studied reproducibility in ML education using few-shot intent classification with BERT, and built educational resources on how incomplete methodology reporting harms result validation.',
-  },
-  {
-    role: 'Graduate Student / Research & Teaching Assistant',
+    role: 'M.S. in Computer Engineering',
     org: 'New York University',
     orgUrl: 'https://www.nyu.edu',
-    period: 'Aug 2022 – Present',
+    period: 'Aug 2022 – May 2024 · GPA 3.9/4.0',
     blurb:
-      'M.S. coursework across ML, Deep Learning, Big Data, Cloud Computing, and Systems. Built teaching materials for deploying ML models on NSF cloud testbeds with Kubernetes; TA for Machine Learning.',
+      'Coursework across Machine Learning, Deep Learning, Cloud Computing, Big Data, Internet Architecture & Protocols, and Computing Systems & Architecture.',
   },
   {
-    role: 'Associate Software Engineer',
-    org: 'Bosch India',
+    role: 'Software Development Engineer',
+    org: 'Bosch Global Software Technologies',
     orgUrl: 'https://www.bosch-softwaretechnologies.com/en/',
-    period: 'Jan 2021 – Jul 2022',
+    period: 'Jan 2021 – Jul 2022 · India',
     blurb:
-      'Built end-to-end automation test scripts for the Smart Automation Test project, collaborating with 12+ peer groups across geographies.',
-  },
-  {
-    role: 'Machine Learning Intern',
-    org: 'Magic Finserv',
-    orgUrl: 'https://www.magicfinserv.com/',
-    period: 'Jan 2020 – Jun 2020',
-    blurb:
-      'Built a deep-learning model with FastText embeddings to detect and highlight financial risk statements in documents.',
-  },
-  {
-    role: 'B.Tech, Information Technology',
-    org: 'G.L. Bajaj Institute of Technology and Management',
-    period: '2016 – 2020',
-    blurb: 'Where it all started — Python programming and my first machine-learning classes.',
+      'Built end-to-end automation testing scripts with 12+ peer groups across geographies, cutting basic functional-test time by 80% by simulating failure cases in Python.',
   },
 ];
 
