@@ -50,12 +50,44 @@ export const work: Experience[] = [
       'Fine-tuned CodeLlama-13B into a text-to-Cypher model behind an interactive chat feature, and built semantic search with a Neo4j vector store over ~3M research papers.',
   },
   {
-    role: 'Software Development Engineer',
+    role: 'Graduate Teaching Assistant — ECE-GY 6143 Machine Learning',
+    org: 'New York University',
+    orgUrl: 'https://www.nyu.edu',
+    period: 'Sep 2023 – May 2024 · New York, NY',
+    blurb:
+      'TA for ECE-GY 6143 Machine Learning — answered student questions, guided assignments, and ran regular office hours and review sessions.',
+  },
+  {
+    role: 'Graduate Research Assistant',
+    org: 'New York University',
+    orgUrl: 'https://www.nyu.edu',
+    period: 'Sep 2022 – Sep 2023 · New York, NY',
+    blurb:
+      'Built educational materials for ML system deployment on NSF-funded cloud testbeds, covering load balancing and scaling with Kubernetes. Assisted Prof. Fraida Fund on the "Fount" project.',
+  },
+  {
+    role: 'Summer Research Intern — ML Reproducibility Fellow',
+    org: 'University of California, Santa Cruz',
+    orgUrl: 'https://ucsc-ospo.github.io/sor23/',
+    period: 'May 2023 – Aug 2023 · Remote',
+    blurb:
+      'Implemented few-shot intent classification with BERT to demonstrate the impact of synonym-based text augmentation, and built educational materials on the role of complete methodology reporting in reproducibility — incorporated into the UCSC curriculum.',
+  },
+  {
+    role: 'Software Engineer',
     org: 'Bosch Global Software Technologies',
     orgUrl: 'https://www.bosch-softwaretechnologies.com/en/',
-    period: 'Jan 2021 – Jul 2022 · India',
+    period: 'Jan 2021 – Jul 2022 · Coimbatore, India',
     blurb:
-      'Built end-to-end automation testing scripts with 12+ peer groups across geographies, cutting basic functional-test time by 80% by simulating failure cases in Python.',
+      'Built a pre-check build tool that cut missing-system-constant failure identification from 1.5 hours to 30 seconds. Automated end-to-end testing with 12 peer groups (80% less testing time) and integrated testing tools to improve synchronization.',
+  },
+  {
+    role: 'Machine Learning Intern',
+    org: 'Magic FinServ',
+    orgUrl: 'https://www.magicfinserv.com/',
+    period: 'Jan 2020 – Jun 2020 · Noida, India',
+    blurb:
+      'Built a deep-learning model with FastText embeddings to predict financial risk in textual statements, highlighting potential risk passages in documents.',
   },
 ];
 
@@ -67,6 +99,13 @@ export const education: Experience[] = [
     period: 'Aug 2022 – May 2024 · GPA 3.9/4.0',
     blurb:
       'Coursework across Machine Learning, Deep Learning, Cloud Computing, Big Data, Internet Architecture & Protocols, and Computing Systems & Architecture.',
+  },
+  {
+    role: 'B.Tech in Information Technology',
+    org: 'G.L. Bajaj Institute of Technology',
+    period: '2016 – 2020',
+    blurb:
+      'Bachelor of Technology, Information Technology — where I first picked up Python programming and machine learning.',
   },
 ];
 
