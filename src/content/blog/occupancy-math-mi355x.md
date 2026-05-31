@@ -152,6 +152,86 @@ That rounding has teeth. Suppose the compiler reports **100 total VGPRs per lane
 
 The flip side is free occupancy. Trim that same kernel back under the boundary — to **96 total VGPRs** — and `floor(512 / 96) = 5` waves returns you to 62.5%. Shaving a handful of registers to drop below a granularity boundary is one of the cheapest occupancy wins there is, and it's exactly why you read the *rounded* number out of the binary rather than trusting the one in your head. When hand math and the profiler disagree by a single wave, granularity is almost always the reason.
 
+### Try it: the occupancy calculator
+
+You don't have to trust the arithmetic — run it. Plug in what the binary reports and watch the binding limiter (and the granularity-8 rounding) decide the answer. It's preloaded with the worked example above; change a number and see what moves.
+
+<div id="occ-calc">
+  <style>
+  #occ-calc{border:1px solid var(--border);background:var(--bg-card);border-radius:12px;padding:18px 20px;margin:20px 0;font-family:var(--sans)}
+  #occ-calc h4{margin:0 0 4px;font-family:var(--mono);font-size:15px;color:var(--text)}
+  #occ-calc .oc-sub{color:var(--text-dim);font-size:13px;margin:0 0 14px}
+  #occ-calc .oc-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+  @media(max-width:560px){#occ-calc .oc-grid{grid-template-columns:1fr}}
+  #occ-calc .oc-row{display:flex;justify-content:space-between;align-items:center;margin:7px 0;gap:10px}
+  #occ-calc label{font-size:13.5px;color:var(--text-dim)}
+  #occ-calc input{width:92px;background:var(--bg-soft);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:14px;padding:5px 8px;border-radius:6px;text-align:right}
+  #occ-calc input:focus{outline:none;border-color:var(--accent)}
+  #occ-calc .oc-out{background:var(--bg-soft);border:1px solid var(--border);border-radius:10px;padding:14px 16px}
+  #occ-calc .oc-occ{font-family:var(--mono);font-size:34px;font-weight:700;color:var(--accent);line-height:1.1}
+  #occ-calc .oc-occ small{font-size:14px;color:var(--text-dim);font-weight:400}
+  #occ-calc .oc-waves{font-family:var(--mono);font-size:13px;color:var(--text-dim);margin:2px 0 10px}
+  #occ-calc .oc-lim{display:flex;justify-content:space-between;font-family:var(--mono);font-size:13px;padding:5px 8px;border-radius:6px;margin-top:5px;color:var(--text-dim)}
+  #occ-calc .oc-lim.bind{background:var(--accent-soft);color:var(--text)}
+  #occ-calc .oc-lim .b{color:var(--accent);font-weight:600}
+  #occ-calc .oc-note{font-size:12px;color:var(--text-faint);margin-top:10px}
+  </style>
+  <h4>occupancy calculator · gfx950</h4>
+  <p class="oc-sub">512 VGPR/lane · ~800 SGPR/SIMD · 160 KB LDS/CU · max 8 waves/SIMD · VGPR granularity 8, SGPR 16.</p>
+  <div class="oc-grid">
+    <div>
+      <div class="oc-row"><label>Regular VGPRs / lane</label><input id="oc-reg" type="number" value="128" min="0" max="256"></div>
+      <div class="oc-row"><label>Accumulator VGPRs / lane</label><input id="oc-acc" type="number" value="0" min="0" max="256"></div>
+      <div class="oc-row"><label>SGPRs / wave</label><input id="oc-sgpr" type="number" value="50" min="0" max="102"></div>
+      <div class="oc-row"><label>LDS / workgroup (KB)</label><input id="oc-lds" type="number" value="32" min="0" step="0.5"></div>
+      <div class="oc-row"><label>Workgroup size (threads)</label><input id="oc-thr" type="number" value="256" min="64" step="64"></div>
+    </div>
+    <div class="oc-out">
+      <div class="oc-occ" id="oc-pct">&mdash;</div>
+      <div class="oc-waves" id="oc-waves"></div>
+      <div class="oc-lim" id="oc-l-VGPR"><span>VGPR</span><span class="v"></span></div>
+      <div class="oc-lim" id="oc-l-SGPR"><span>SGPR</span><span class="v"></span></div>
+      <div class="oc-lim" id="oc-l-LDS"><span>LDS</span><span class="v"></span></div>
+      <div class="oc-note" id="oc-note"></div>
+    </div>
+  </div>
+  <script>
+  (function(){
+    var VFILE=512,SFILE=800,LDSCU=160,MAXW=8,SIMDS=4,VGRAN=8,SGRAN=16;
+    var ids=["reg","acc","sgpr","lds","thr"],el={};
+    ids.forEach(function(k){el[k]=document.getElementById("oc-"+k);});
+    function ru(x,g){return Math.ceil(x/g)*g;}
+    function calc(){
+      var reg=+el.reg.value||0,acc=+el.acc.value||0,sgpr=+el.sgpr.value||0,lds=+el.lds.value||0,thr=+el.thr.value||64;
+      var totV=ru(reg+acc,VGRAN);
+      var vlim=totV>0?Math.floor(VFILE/totV):MAXW;
+      var slim=sgpr>0?Math.floor(SFILE/ru(sgpr,SGRAN)):MAXW;
+      var wpg=Math.max(1,Math.ceil(thr/64)),perSimd=wpg/SIMDS;
+      var llim=lds>0?Math.floor(LDSCU/lds)*perSimd:Infinity;
+      var lims={VGPR:vlim,SGPR:slim,LDS:llim};
+      var waves=Math.min(vlim,slim,llim,MAXW);
+      var bind="VGPR",mn=vlim;
+      if(slim<mn){mn=slim;bind="SGPR";} if(llim<mn){mn=llim;bind="LDS";}
+      if(mn>=MAXW)bind="cap";
+      var occ=Math.round(waves/MAXW*1000)/10;
+      document.getElementById("oc-pct").innerHTML=occ+"% <small>occupancy</small>";
+      document.getElementById("oc-waves").textContent=(Math.round(waves*10)/10)+" waves/SIMD · "+(Math.round(waves*SIMDS*10)/10)+" waves/CU";
+      ["VGPR","SGPR","LDS"].forEach(function(key){
+        var val=lims[key],e=document.getElementById("oc-l-"+key),v=e.querySelector(".v");
+        var txt=isFinite(val)?(Math.round(val*10)/10)+" w/SIMD":"—";
+        e.className="oc-lim"+(bind===key?" bind":"");
+        v.innerHTML=(bind===key?'<span class="b">'+txt+" ← binds</span>":txt);
+      });
+      var note=(bind==="cap")?"At the 8 waves/SIMD hardware cap.":"Bound by "+bind+" — cut it to raise occupancy.";
+      if(reg+acc>VFILE)note="⚠ regular + accumulator exceeds 512 — won't fit.";
+      document.getElementById("oc-note").textContent=note;
+    }
+    ids.forEach(function(k){el[k].addEventListener("input",calc);});
+    calc();
+  })();
+  </script>
+</div>
+
 ### How to measure it
 
 Two ways, and you want both. Statically, ask the compiler and the binary what the kernel actually consumes:
@@ -164,6 +244,24 @@ hipcc -Rpass-analysis=kernel-resource-usage kernel.cpp
 llvm-objdump --disassemble --mcpu=gfx950 kernel.hsaco | grep -iE "vgpr_count|agpr_count|sgpr_count|group_segment|accum_offset"
 roc-obj-ls a.out
 ```
+
+Here's that grep on two real tiles of the grouped-GEMM kernel — the small one from the worked example and a much bigger one — with the 512-file split visible in the directives:
+
+```
+# small tile (the worked example): accumulator lives in regular VGPRs
+.vgpr_count:          128    # total VGPRs/lane (regular + accumulator)
+.agpr_count:          0      #   -> floor(512 / 128) = 4 waves/SIMD
+.amdhsa_accum_offset  128    # AccVGPRs would start at 128 -> none used
+.sgpr_count:          50
+.vgpr_spill_count:    0      # no spills
+
+# big tile: one 512 file, now split across both pools
+.vgpr_count:          498    # 252 regular + 246 accumulator = 498 (<= 512)
+.agpr_count:          246    #   -> floor(512 / 498) = 1 wave/SIMD
+.amdhsa_accum_offset  252    # regular 0..251, AccVGPRs 252..497
+```
+
+Same kernel, two tiles: the small one keeps the accumulator in regular VGPRs (`agpr_count 0`); the big one spends 246 AccVGPRs — and because both pools draw on the one 512-entry file, `vgpr_count` already includes them, so the bigger tile's ceiling collapses to a single wave/SIMD. That's the Part 1 claim, straight from the binary.
 
 Those give you the inputs to the formulas above — the *theoretical* occupancy ceiling. For what the kernel achieved at runtime, read `OccupancyPercent` (or `MeanOccupancyPerCU`) with rocprofv3, alongside `MfmaUtil` (matrix-engine busy) and `VALUBusy` so you can tell whether occupancy is even your problem.
 
