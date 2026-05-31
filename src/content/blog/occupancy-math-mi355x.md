@@ -36,8 +36,8 @@ For occupancy, the only unit you reason about is the Compute Unit. Everything ab
 
 A CU is four SIMD units plus shared infrastructure. Each SIMD is 64 lanes wide and owns a private register file. The pieces that matter:
 
-- **VGPRs — 512 per SIMD, private.** The vector register file, allocated per wave. This is usually the resource that caps occupancy.
-- **AccVGPRs — a separate accumulator pool, also private to the SIMD.** MFMA instructions accumulate here. Because it's separate from the VGPR file, spending it doesn't directly evict your general-purpose registers — a fact that matters enormously in Part 3.
+- **VGPRs — a 512-entry-per-lane vector register file, private to the SIMD.** Allocated per wave. This is usually the resource that caps occupancy.
+- **AccVGPRs — the matrix accumulators, carved from that *same* 512 file.** MFMA instructions can accumulate here. On CDNA4 the file is split between *regular* VGPRs (≤256/wave) and *accumulation* VGPRs (≤256/wave), but the two share one 512-entry budget — a wave's regular **plus** accumulator count is what's measured against 512 (ISA §3.6.4: "up to 512 total VGPRs, 256 of each type… the number of each type is flexible"). This is *not* the separate physical ACC file of MI100/MI200; CDNA3 unified them and CDNA4 keeps it that way. In practice the compiler fills regular VGPRs first: most of the MXFP8 grouped-GEMM tiles I profiled run with **zero** AccVGPRs — the accumulator sits in regular VGPRs — and only the largest tiles spill into the accumulator pool. Either way it's one budget, and that's the fact Part 3 turns on.
 - **SGPRs — ~800 per SIMD.** Scalar registers, allocated per wave. Rarely the binding limit.
 - **LDS — 160 KB, shared across all four SIMDs.** One physical scratchpad per CU. It's the cooperation mechanism for a workgroup, and on CDNA4 it's 2.5× the size of CDNA3's 64 KB.
 
@@ -87,7 +87,7 @@ Occupancy has a one-line definition: it's the number of wavefronts resident on a
 
 Each limiter has the same shape — a fixed hardware budget divided by what one unit of your kernel consumes, floored to a whole number — but they count different things:
 
-- **VGPRs** hold every per-thread value that's live at once: the accumulator tile, loaded operands, loop variables. Bigger tiles and deeper unrolling cost more.
+- **VGPRs** hold every per-thread value live at once — loaded operands, loop variables, *and* the accumulator tile — with regular and accumulator registers drawing on one 512-entry file. Bigger tiles and deeper unrolling cost more.
 - **SGPRs** hold values uniform across a wave — base addresses, loop bounds, predicates. Usually cheap.
 - **LDS** holds the workgroup's shared staging buffers: the tiles you cooperatively load before feeding the matrix core.
 - **Workgroup slots and barriers** are spent once per resident workgroup, no matter how large or small it is.
@@ -95,7 +95,7 @@ Each limiter has the same shape — a fixed hardware budget divided by what one 
 As formulas:
 
 ```
-VGPR limit:  floor( 512    / VGPRs-per-thread   )  ->  waves / SIMD
+VGPR limit:  floor( 512 / total-VGPRs-per-lane  )  ->  waves / SIMD   (total = regular + accumulator)
 SGPR limit:  floor( ~800   / SGPRs-per-wave     )  ->  waves / SIMD
 LDS  limit:  floor( 160 KB / LDS-per-workgroup  )  ->  workgroups / CU
 WG   limit:  max workgroups resident / CU          (hard cap + barrier slots)
@@ -117,11 +117,11 @@ Concretely: suppose LDS allows 6 resident workgroups per CU and each workgroup i
 
 ### A worked example
 
-Take a realistic MXFP8 grouped-GEMM tile: a 256-thread workgroup (4 waves) using 96 VGPRs per thread, 48 SGPRs per wave, and 32 KB of LDS per workgroup. Run the three limiters:
+Take a real MXFP8 grouped-GEMM tile — these numbers come straight from a compiled `_gluon_mxfp8_grouped_mm_kernel` code object (`llvm-objdump --mcpu=gfx950`, no spills): a 256-thread workgroup (4 waves) using **128 total VGPRs per lane** (all regular — `agpr_count` is 0, so the accumulator sits in regular VGPRs), **50 SGPRs per wave**, and **32 KB of LDS** per workgroup. It lowers to `v_mfma_scale_f32_32x32x64_f8f6f4`, the scaled MXFP8 matrix op. Run the limiters:
 
 ```
-VGPR:  floor(512 / 96) = 5 waves / SIMD
-SGPR:  floor(800 / 48) = 16 waves / SIMD     (not binding)
+VGPR:  floor(512 / 128) = 4 waves / SIMD     (128 = regular + accumulator; agpr_count = 0)
+SGPR:  floor(800 / 50)  = 16 waves / SIMD    (not binding)
 WG:    workgroup / barrier cap on workgroups/CU   (not binding for a 4-wave tile)
 LDS:   depends on the LDS budget, which is exactly what changed across generations
 ```
@@ -131,26 +131,26 @@ So compare the two generations directly:
 ```
 CDNA3 (MI300X, 64 KB LDS)
   LDS:  floor(64 / 32) = 2 workgroups/CU  ->  2 waves/SIMD
-  min( VGPR 5, SGPR 16, LDS 2 ) = 2 waves/SIMD
+  min( VGPR 4, SGPR 16, LDS 2 ) = 2 waves/SIMD
   occupancy = 2 / 8 = 25%        <- LDS-bound
 
 CDNA4 (MI355X, 160 KB LDS)
   LDS:  floor(160 / 32) = 5 workgroups/CU  ->  5 waves/SIMD
-  min( VGPR 5, SGPR 16, LDS 5 ) = 5 waves/SIMD
-  occupancy = 5 / 8 = 62.5%      <- register-bound
+  min( VGPR 4, SGPR 16, LDS 5 ) = 4 waves/SIMD
+  occupancy = 4 / 8 = 50%        <- register-bound
 ```
 
-Same kernel, same tile — 25% on CDNA3, 62.5% on CDNA4. And notice *what* changed: on MI300X the kernel was strangled by LDS; the 160 KB scratchpad on MI355X lifts that ceiling until the VGPR limit (5) becomes the constraint instead. More LDS didn't just raise the number — it relocated the bottleneck. That relocation is the whole reason to do this math by hand rather than read a profiler percentage and shrug.
+Same kernel, same tile — 25% on CDNA3, 50% on CDNA4. And notice *what* changed: on MI300X the kernel was strangled by LDS; the 160 KB scratchpad on MI355X lifts that ceiling until the VGPR file (4 waves) becomes the constraint instead. More LDS didn't just raise the number — it relocated the bottleneck from the shared scratchpad to the per-lane register file. That relocation is the whole reason to do this math by hand rather than read a profiler percentage and shrug. And it keeps moving: heavier variants of this very kernel compile to 202, 294, even 498 total VGPRs — the 294-and-up tiles start spending real AccVGPRs on top of the regular ones — and occupancy slides to 2, then 1 wave/SIMD. Which is the setup for Part 3.
 
 ![mi355x_06_worked_example.svg](/blog/occupancy-mi355x/mi355x_06_worked_example.svg)
 
 ### Granularity: where hand-math drifts from reality
 
-The floor divisions above assume your kernel uses exactly the registers you think it does. It doesn't — the hardware allocates registers in fixed-size blocks, so your effective count is always rounded *up* to the next block boundary. VGPRs round to a small granularity (check your `objdump` output; commonly 4–8 on CDNA), SGPRs to roughly 16, and LDS to its own granularity too.
+The floor divisions above assume your kernel uses exactly the registers you think it does. It doesn't — the hardware allocates registers in fixed-size blocks, so your effective count is always rounded *up* to the next block boundary. On CDNA4, **VGPRs round up to groups of 8** (ISA §3.6.4: gfx950 allocates the vector file in eight-Dword groups — confirm in your `objdump`), SGPRs to 16, and LDS to its own block size too.
 
-That rounding has teeth. Suppose the compiler reports **100 VGPRs per thread**. By hand you'd expect `floor(512 / 100) = 5` waves/SIMD, or 62.5%. But with a granularity of 8, 100 rounds up to **104**, and `floor(512 / 104) = 4` waves — 50%. You silently lost a wave to four registers you didn't know you were spending.
+That rounding has teeth. Suppose the compiler reports **100 total VGPRs per lane**. By hand you'd expect `floor(512 / 100) = 5` waves/SIMD, or 62.5%. But with a granularity of 8, 100 rounds up to **104**, and `floor(512 / 104) = 4` waves — 50%. You silently lost a wave to four registers you didn't know you were spending.
 
-The flip side is free occupancy. Trim that same kernel back under the boundary — to **96 VGPRs** — and `floor(512 / 96) = 5` waves returns you to 62.5%. Shaving a handful of registers to drop below a granularity boundary is one of the cheapest occupancy wins there is, and it's exactly why you read the *rounded* number out of the binary rather than trusting the one in your head. When hand math and the profiler disagree by a single wave, granularity is almost always the reason.
+The flip side is free occupancy. Trim that same kernel back under the boundary — to **96 total VGPRs** — and `floor(512 / 96) = 5` waves returns you to 62.5%. Shaving a handful of registers to drop below a granularity boundary is one of the cheapest occupancy wins there is, and it's exactly why you read the *rounded* number out of the binary rather than trusting the one in your head. When hand math and the profiler disagree by a single wave, granularity is almost always the reason.
 
 ### How to measure it
 
@@ -161,7 +161,7 @@ Two ways, and you want both. Statically, ask the compiler and the binary what th
 hipcc -Rpass-analysis=kernel-resource-usage kernel.cpp
 
 # or read it straight out of the code object
-llvm-objdump --disassemble --mcpu=gfx950 kernel.hsaco | grep -iE "vgpr|sgpr|lds|granulated"
+llvm-objdump --disassemble --mcpu=gfx950 kernel.hsaco | grep -iE "vgpr_count|agpr_count|sgpr_count|group_segment|accum_offset"
 roc-obj-ls a.out
 ```
 
@@ -202,7 +202,7 @@ There are two ways to put L/T independent MFMAs in flight:
 - **TLP (occupancy):** many resident waves, each issuing one MFMA. The independence comes from *different waves*.
 - **ILP:** fewer waves, each issuing several *independent* MFMAs — multiple accumulator tiles advanced in parallel inside one wave. The independence comes from *within the wave*.
 
-Both satisfy Little's Law. And here's the CDNA-specific kicker: MFMA accumulates into AccVGPRs, a register pool separate from the architected VGPRs. Holding several independent accumulator tiles for ILP draws down the *accumulator* pool — it doesn't evict the operand registers the way piling everything into one pool would. ILP is comparatively cheap on this architecture, which is exactly why you can afford to spend registers on it instead of on more waves.
+Both satisfy Little's Law. And here's the CDNA4-specific tension: the MFMA accumulator — whether the compiler parks it in regular VGPRs or in AccVGPRs — comes out of the *same* 512-entry register file as your operands (≤256 of each type, flexibly split; on the kernels above it's 0 AccVGPRs, with the accumulator living in regular VGPRs). So holding several independent accumulator tiles for ILP spends real register budget: it raises the wave's total VGPR count and therefore pushes occupancy **down**. That's not a flaw in the plan; it *is* the plan. ILP and occupancy are two ways to spend one 512-register budget to satisfy Little's Law, and this section's whole claim is that spending it on bigger per-wave tiles (ILP) usually beats spending it on more waves (TLP). The accumulators aren't free — they're simply the better thing to buy.
 
 ![mi355x_07_tlp_vs_ilp.svg](/blog/occupancy-mi355x/mi355x_07_tlp_vs_ilp.svg)
 
@@ -230,12 +230,12 @@ So what *is* the extra LDS for? Depth. Use it to stage more of the operand strea
 
 ### The trap: cranking occupancy can starve the matrix core
 
-Now the punchline. The register file is fixed at 512 VGPRs/SIMD, so occupancy and per-wave register budget are in direct, zero-sum tension:
+Now the punchline. The register file is fixed at 512 VGPRs/lane — regular operands and accumulators **together** — so occupancy and per-wave tile size are in direct, zero-sum tension:
 
 ```
-more waves/SIMD  ->  fewer VGPRs per wave  ->  smaller accumulator tile
+more waves/SIMD  ->  fewer total VGPRs per wave  ->  smaller accumulator tile
                  ->  lower arithmetic intensity (more LDS/HBM traffic per MFMA)
-                 ->  matrix core waits on data  ->  throughput DOWN
+                 ->  matrix core waits on data   ->  throughput DOWN
 ```
 
 Past the point where you have just enough waves (plus ILP) to cover latency, every additional wave you buy by shrinking the tile is a wave you didn't need — paid for with arithmetic intensity you did. That's how a kernel at 75% occupancy loses to the same kernel reworked to 37.5%: the low-occupancy version holds a bigger register-resident tile, does more compute per byte moved, and keeps the matrix core saturated through ILP. For MFMA-bound kernels the sweet spot is routinely 2–4 waves/SIMD, not 8.
@@ -244,13 +244,24 @@ Past the point where you have just enough waves (plus ILP) to cover latency, eve
 
 ### Case study: an MXFP8 grouped GEMM tile sweep
 
-Put it together on a real kernel. Take a grouped GEMM and sweep the per-wave output tile, recording at each step the AccVGPR usage, waves/SIMD, occupancy, and achieved TFLOP/s.
+Put it together on a real kernel. I swept the per-wave output tile of an MXFP8 grouped GEMM (E=8, M=16384, N=2048, K=11264) on an MI355X, varying only `BLOCK_M/N/K`, and read back every number with rocprofv3 — `OccupancyPercent`, `MfmaUtil` (matrix-engine busy), `VALUBusy`, and per-dispatch register/scratch counts — alongside wall-clock TFLOP/s:
+
+```
+tile  BM×BN×BK (w/s)   VGPR  LDS    spill   occ%   MFMA%  VALU%   TFLOP/s   %peak
+  A    64×128×256 (4/2)   84  50 KB    -     30.5   29.8   23.8     1228     ~25%
+  B   128×128×256 (4/2)  112  66 KB    -     19.5   34.0   18.7     1363     ~27%   <- peak
+  C   128×256×256 (4/2)  172  99 KB    -      9.6   25.7   10.4     1141     ~23%
+  D   256×128×256 (8/2)  112  99 KB    -     19.1   33.1   12.4     1352     ~27%
+  E   256×256×256 (8/2)  128 132 KB  spills  15.9   21.8    7.4      994     ~20%
+```
 
 ![mi355x_09_sweep.svg](/blog/occupancy-mi355x/mi355x_09_sweep.svg)
 
-As the tile grows, AccVGPR per wave rises and occupancy falls — yet throughput climbs, because each wave now carries more independent MFMA work and a higher arithmetic intensity. It climbs until a knee: push the tile too far and you either spill registers (catastrophic) or thin the wave count below what's needed to hide memory latency. The peak sits at low occupancy, on the far side of where the "maximize occupancy" advice would have told you to stop.
+Read that table against the "maximize occupancy" advice and it falls apart. **Every fast config lives at 10–30% occupancy** — nothing good is anywhere near the ceiling. The peak (B, 1363 TFLOP/s) sits at **19.5%** occupancy and *beats the highest-occupancy config* (A, 30.5%) by ~10%: cranking occupancy up by shrinking the tile made it slower. And the throughput ranking tracks **`MfmaUtil`** almost exactly (34.0 ≳ 33.1 > 29.8 > 25.7 > 21.8) — not occupancy. That's the whole argument in five rows: the matrix-engine busy counter predicts performance; the occupancy percentage doesn't.
 
-The numbers on that curve are yours to fill from rocprofv3 — but the shape is the point, and it's the same shape Volkov measured more than fifteen years ago.
+It isn't "lower occupancy is always better," either — it's a sweet spot. Push the tile too far (C: 172 VGPR → 9.6% occupancy) and you thin the wave count below what's needed to hide latency; MfmaUtil and throughput both fall. Push it until it spills (E) and you give the rest back. The peak is interior, at low occupancy, on the far side of where the advice would have told you to stop.
+
+One more thing the profiler shows: config B's VGPR-limited *ceiling* is `floor(512/112) = 4` waves/SIMD = 50%, but rocprofv3 measures **19.5%**. That gap — jagged-expert imbalance, grid tails, waves draining at the edges — is exactly the "ceiling is not the time-average" caveat from the end of Part 2, live on a real kernel. The shape of this trade is the same one Volkov measured more than fifteen years ago; only the counters have new names.
 
 ### So what should you actually optimize?
 
@@ -276,6 +287,6 @@ So here's how to use all of it. Next time you open a kernel:
 
 The kernels that win on MI355X treat the 512-VGPR file and the matrix core as the scarce resources — and treat occupancy as the readout that tells them which knob just moved.
 
-> **MI355X occupancy cheat sheet** — 512 VGPR/SIMD (private) · separate AccVGPR pool · ~800 SGPR/SIMD · 160 KB LDS/CU (shared) · max 8 waves/SIMD, 32/CU · limiters: VGPR, SGPR, LDS, workgroup (+barriers) · occupancy = min(limiters), then clamp.
+> **MI355X occupancy cheat sheet** (gfx950, verified on-device) — 512 VGPR/lane per SIMD (private), shared by regular ≤256 + accumulator ≤256 · ~800 SGPR/SIMD, ≤102/wave · 160 KB LDS/CU (shared) · max 8 waves/SIMD, 32/CU · VGPR alloc granularity 8 · limiters: VGPR (regular+acc), SGPR, LDS, workgroup (+barriers) · occupancy = min(limiters), then clamp.
 
 *Compute the ceiling so you know where it is — then decide, deliberately, how far below it to stop.*
