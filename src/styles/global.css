@@ -381,6 +381,16 @@ section {
   padding-left: 16px;
   color: var(--text-faint);
 }
+.prose img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: 28px auto;
+  background: #fff;
+  border-radius: 12px;
+  padding: 14px;
+  border: 1px solid var(--border);
+}
 .back-link {
   font-family: var(--mono);
   font-size: 14px;
