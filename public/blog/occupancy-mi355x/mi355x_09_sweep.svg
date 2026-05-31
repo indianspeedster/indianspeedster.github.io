@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="600" viewBox="0 0 1000 600" font-family="Comic Sans MS, Segoe Print, sans-serif">
+<defs><marker id="ah" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L8,3 L0,6 Z" fill="#1e1e1e"/></marker></defs>
+<rect width="1000" height="600" fill="#ffffff"/>
+<line x1="120" y1="470" x2="120" y2="86" stroke="#1e1e1e" stroke-width="2" marker-end="url(#ah)" />
+<line x1="120" y1="470" x2="930" y2="470" stroke="#1e1e1e" stroke-width="2" marker-end="url(#ah)" />
+<polyline points="140,150 310,205 480,265 650,330 870,398" fill="none" stroke="#7048e8" stroke-width="3" />
+<polyline points="140,412 300,330 460,250 620,182 700,152 780,168 870,206" fill="none" stroke="#e03131" stroke-width="3" />
+<polyline points="700,152 700,470" fill="none" stroke="#adb5bd" stroke-width="2" stroke-dasharray="7 5"/>
+<rect x="548" y="108" width="320" height="38" rx="12" fill="#ffec99" stroke="#1e1e1e" stroke-width="2"/>
+<rect x="150" y="92" width="16" height="16" rx="12" fill="#7048e8" stroke="#1e1e1e" stroke-width="2"/>
+<rect x="300" y="92" width="16" height="16" rx="12" fill="#e03131" stroke="#1e1e1e" stroke-width="2"/>
+<text x="40" y="40.9" font-size="22" text-anchor="start" fill="#1e1e1e" font-weight="bold">Tile-size sweep: occupancy down, throughput up (schematic)</text>
+<text x="330" y="515.3" font-size="14" text-anchor="start" fill="#1e1e1e" font-weight="normal">per-wave tile size  /  AccVGPR per wave  →</text>
+<text x="708.0" y="129.925" font-size="13" text-anchor="middle" fill="#1e1e1e" font-weight="normal">peak throughput — at LOW occupancy</text>
+<text x="174" y="104.35" font-size="13" text-anchor="start" fill="#1e1e1e" font-weight="normal">occupancy</text>
+<text x="324" y="104.35" font-size="13" text-anchor="start" fill="#1e1e1e" font-weight="normal">TFLOP/s</text>
+<text x="150" y="536.35" font-size="13" text-anchor="start" fill="#1971c2" font-weight="normal">Schematic — replace with your rocprofv3 sweep. The shape is the point:</text>
+<text x="150" y="552.6" font-size="13" text-anchor="start" fill="#1971c2" font-weight="normal">the throughput peak sits well past the occupancy &#x27;maximum&#x27;.</text>
+</svg>
