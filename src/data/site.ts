@@ -32,7 +32,7 @@ export type Experience = {
   blurb: string;
 };
 
-export const experience: Experience[] = [
+export const work: Experience[] = [
   {
     role: 'Sr. Software Development Engineer',
     org: 'AMD',
@@ -50,20 +50,23 @@ export const experience: Experience[] = [
       'Fine-tuned CodeLlama-13B into a text-to-Cypher model behind an interactive chat feature, and built semantic search with a Neo4j vector store over ~3M research papers.',
   },
   {
-    role: 'M.S. in Computer Engineering',
-    org: 'New York University',
-    orgUrl: 'https://www.nyu.edu',
-    period: 'Aug 2022 – May 2024 · GPA 3.9/4.0',
-    blurb:
-      'Coursework across Machine Learning, Deep Learning, Cloud Computing, Big Data, Internet Architecture & Protocols, and Computing Systems & Architecture.',
-  },
-  {
     role: 'Software Development Engineer',
     org: 'Bosch Global Software Technologies',
     orgUrl: 'https://www.bosch-softwaretechnologies.com/en/',
     period: 'Jan 2021 – Jul 2022 · India',
     blurb:
       'Built end-to-end automation testing scripts with 12+ peer groups across geographies, cutting basic functional-test time by 80% by simulating failure cases in Python.',
+  },
+];
+
+export const education: Experience[] = [
+  {
+    role: 'M.S. in Computer Engineering',
+    org: 'New York University',
+    orgUrl: 'https://www.nyu.edu',
+    period: 'Aug 2022 – May 2024 · GPA 3.9/4.0',
+    blurb:
+      'Coursework across Machine Learning, Deep Learning, Cloud Computing, Big Data, Internet Architecture & Protocols, and Computing Systems & Architecture.',
   },
 ];
 
@@ -76,40 +79,25 @@ export type Project = {
 
 export const projects: Project[] = [
   {
-    name: 'pytorch/ao',
-    href: 'https://github.com/indianspeedster/ao',
-    blurb: 'Contributions to PyTorch-native quantization and sparsity for training and inference.',
-    tags: ['PyTorch', 'Quantization'],
+    name: 'unet.cu',
+    href: 'https://github.com/indianspeedster/unet.cu',
+    blurb:
+      'A UNet diffusion-model training framework in C++/CUDA with HIP support for unconditional diffusion training and inference on NVIDIA and AMD GPUs — reaching ~40% of PyTorch (torch.compile) end-to-end training speed.',
+    tags: ['C++', 'CUDA', 'HIP', 'Diffusion'],
   },
   {
-    name: 'deepseek-v4-mi35x-kernels',
-    href: 'https://github.com/indianspeedster/deepseek-v4-mi35x-kernels',
-    blurb: 'Per-kernel benchmarks and accuracy tests for AMD/ROCm kernels on the DeepSeek V4 inference path (MI35x / MI300x).',
-    tags: ['ROCm', 'Kernels', 'Benchmarks'],
+    name: 'SummarizeNow',
+    href: 'https://github.com/indianspeedster/SummarizeNow',
+    blurb:
+      'Fine-tuned T5 for news-article summarization (ROUGE-L 0.42), packaged in a Docker container and served via a Flask web app.',
+    tags: ['T5', 'NLP', 'Docker', 'Flask'],
   },
   {
-    name: 'grouped-gemms',
-    href: 'https://github.com/indianspeedster/grouped-gemms',
-    blurb: 'Standalone ROCm MXFP8 grouped-GEMM Triton kernel for AMD MI350+ (gfx950 / CDNA4).',
-    tags: ['Triton', 'MXFP8', 'AMD'],
-  },
-  {
-    name: 'hyperion',
-    href: 'https://github.com/indianspeedster/hyperion',
-    blurb: 'A layer-by-layer study of DeepSeek-V4 — every class in model.py unpacked into runnable, paper-grounded folders.',
-    tags: ['LLM', 'Study'],
-  },
-  {
-    name: 'QueryNavigator',
-    href: 'https://github.com/indianspeedster/QueryNavigator',
-    blurb: 'A RAG chatbot over a PDF-derived knowledge base using vector databases and the OpenAI API.',
-    tags: ['RAG', 'LLM'],
-  },
-  {
-    name: 'autoresearch',
-    href: 'https://github.com/indianspeedster/autoresearch',
-    blurb: 'AI agents that autonomously run research on single-GPU nanochat training.',
-    tags: ['Agents', 'Training'],
+    name: 'llm.c (open source)',
+    href: 'https://github.com/indianspeedster/llm.c',
+    blurb:
+      "Contributed to Andrej Karpathy's llm.c, making the CUDA kernels portable to HIP to add support for AMD devices.",
+    tags: ['CUDA', 'HIP', 'Open Source'],
   },
 ];
 
