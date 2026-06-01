@@ -15,15 +15,15 @@
 <text x="130" y="182" font-size="13" text-anchor="end" fill="#1e1e1e">40</text>
 <line x1="140" y1="108" x2="860" y2="108" stroke="#eef0f2" stroke-width="1"/>
 <text x="130" y="113" font-size="13" text-anchor="end" fill="#1e1e1e">50</text>
-<text x="872" y="408" font-size="13" text-anchor="start" fill="#2f9e44">1200</text>
-<text x="872" y="310" font-size="13" text-anchor="start" fill="#2f9e44">1400</text>
-<text x="872" y="211" font-size="13" text-anchor="start" fill="#2f9e44">1600</text>
-<text x="872" y="113" font-size="13" text-anchor="start" fill="#2f9e44">1800</text>
+<text x="872" y="399" font-size="13" text-anchor="start" fill="#2f9e44">0.70</text>
+<text x="872" y="313" font-size="13" text-anchor="start" fill="#2f9e44">0.80</text>
+<text x="872" y="227" font-size="13" text-anchor="start" fill="#2f9e44">0.90</text>
+<text x="872" y="141" font-size="13" text-anchor="start" fill="#2f9e44">1.00</text>
 <line x1="140" y1="452" x2="140" y2="102" stroke="#1e1e1e" stroke-width="2" marker-end="url(#ah)"/>
 <line x1="860" y1="452" x2="860" y2="102" stroke="#2f9e44" stroke-width="2" marker-end="url(#ah)"/>
 <line x1="140" y1="452" x2="860" y2="452" stroke="#1e1e1e" stroke-width="2"/>
 <text x="34" y="280" font-size="14" text-anchor="middle" fill="#1e1e1e" font-weight="bold" transform="rotate(-90 34 280)">Occupancy / MFMA util (%)</text>
-<text x="978" y="280" font-size="14" text-anchor="middle" fill="#2f9e44" font-weight="bold" transform="rotate(90 978 280)">Throughput (TFLOP/s)</text>
+<text x="978" y="280" font-size="14" text-anchor="middle" fill="#2f9e44" font-weight="bold" transform="rotate(90 978 280)">Throughput (relative to peak)</text>
 <polyline points="180,138 340,223 500,299 660,295 820,291" fill="none" stroke="#e03131" stroke-width="3"/>
 <polyline points="180,253 340,222 500,181 660,175 820,213" fill="none" stroke="#7048e8" stroke-width="3"/>
 <polyline points="180,388 340,299 500,179 660,132 820,215" fill="none" stroke="#2f9e44" stroke-width="3"/>
@@ -55,7 +55,7 @@
 <text x="500" y="510" font-size="14" text-anchor="middle" fill="#1e1e1e" font-weight="bold">per-wave output tile (BM x BN)  —  more ILP →</text>
 <line x1="720" y1="106" x2="660" y2="124" stroke="#adb5bd" stroke-width="1.5" stroke-dasharray="4 4"/>
 <rect x="624" y="74" width="192" height="30" rx="10" fill="#ffec99" stroke="#1e1e1e" stroke-width="2"/>
-<text x="720" y="94" font-size="13" text-anchor="middle" fill="#1e1e1e" font-weight="bold">peak 1751 TFLOP/s @ 22.8%</text>
+<text x="720" y="94" font-size="13" text-anchor="middle" fill="#1e1e1e" font-weight="bold">peak throughput @ 22.8% occ</text>
 <text x="820" y="241" font-size="12" text-anchor="middle" fill="#e03131">spills (knee)</text>
 <line x1="148" y1="116" x2="174" y2="116" stroke="#e03131" stroke-width="3"/><text x="180" y="120" font-size="13" fill="#1e1e1e">occupancy</text>
 <line x1="298" y1="116" x2="324" y2="116" stroke="#7048e8" stroke-width="3"/><text x="330" y="120" font-size="13" fill="#1e1e1e">MFMA util</text>

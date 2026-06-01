@@ -331,7 +331,7 @@ You can watch this happen directly. Take a *dense* MXFP8 matmul on the MI355X an
 
 ![mi355x_11_ilp_sweep.svg](/blog/occupancy-mi355x/mi355x_11_ilp_sweep.svg)
 
-As the tile grows from 64×64 to 256×128, occupancy *falls* from 46% to 23% — and the matrix core gets **busier**, not idler: MFMA utilization climbs from 29% to 40% and throughput from 1231 to 1751 TFLOP/s. The smallest-tile config has the *most* resident waves and the *least*-fed matrix core; the fast one runs at 23% occupancy (under two waves/SIMD) because the independent work the matrix core needs now comes from inside each wave instead of from a crowd of them. Push one tile further — 256×256 — and it spills to scratch: the knee where bigger stops paying. The independent operations Little's Law asked for came from ILP, and you reached peak throughput at a third of the occupancy. (Driver: [`ilp_microbench.py`](/blog/occupancy-mi355x/ilp_microbench.py).)
+As the tile grows from 64×64 to 256×128, occupancy *falls* from 46% to 23% — and the matrix core gets **busier**, not idler: MFMA utilization climbs from 29% to 40% and throughput rises ~40% alongside it. The smallest-tile config has the *most* resident waves and the *least*-fed matrix core; the fast one runs at 23% occupancy (under two waves/SIMD) because the independent work the matrix core needs now comes from inside each wave instead of from a crowd of them. Push one tile further — 256×256 — and it spills to scratch: the knee where bigger stops paying. The independent operations Little's Law asked for came from ILP, and you reached peak throughput at a third of the occupancy.
 
 ### Hiding memory latency with fewer waves
 
@@ -371,24 +371,24 @@ Past the point where you have just enough waves (plus ILP) to cover latency, eve
 
 ### Case study: an MXFP8 grouped GEMM tile sweep
 
-Put it together on a real kernel. I swept the per-wave output tile of an MXFP8 grouped GEMM (E=8, M=16384, N=2048, K=11264) on an MI355X, varying only `BLOCK_M/N/K`, and read back every number with rocprofv3 — `OccupancyPercent`, `MfmaUtil` (matrix-engine busy), `VALUBusy`, and per-dispatch register/scratch counts — alongside wall-clock TFLOP/s:
+Put it together on a real kernel. I swept the per-wave output tile of an MXFP8 grouped GEMM (E=8, M=16384, N=2048, K=11264) on an MI355X, varying only `BLOCK_M/N/K`, and read back every number with rocprofv3 — `OccupancyPercent`, `MfmaUtil` (matrix-engine busy), `VALUBusy`, and per-dispatch register/scratch counts — alongside relative wall-clock throughput:
 
 ```
-tile  BM×BN×BK (w/s)   VGPR  LDS    spill   occ%   MFMA%  VALU%   TFLOP/s   %peak
-  A    64×128×256 (4/2)   84  50 KB    -     30.5   29.8   23.8     1228     ~25%
-  B   128×128×256 (4/2)  112  66 KB    -     19.5   34.0   18.7     1363     ~27%   <- peak
-  C   128×256×256 (4/2)  172  99 KB    -      9.6   25.7   10.4     1141     ~23%
-  D   256×128×256 (8/2)  112  99 KB    -     19.1   33.1   12.4     1352     ~27%
-  E   256×256×256 (8/2)  128 132 KB  spills  15.9   21.8    7.4      994     ~20%
+tile  BM×BN×BK (w/s)   VGPR  LDS    spill   occ%   MFMA%  VALU%   thru (rel.)
+  A    64×128×256 (4/2)   84  50 KB    -     30.5   29.8   23.8      0.90
+  B   128×128×256 (4/2)  112  66 KB    -     19.5   34.0   18.7      1.00   <- peak
+  C   128×256×256 (4/2)  172  99 KB    -      9.6   25.7   10.4      0.84
+  D   256×128×256 (8/2)  112  99 KB    -     19.1   33.1   12.4      0.99
+  E   256×256×256 (8/2)  128 132 KB  spills  15.9   21.8    7.4      0.73
 ```
 
-Read that table against the "maximize occupancy" advice and it falls apart. **Every fast config lives at 10–30% occupancy** — nothing good is anywhere near the ceiling. The peak (B, 1363 TFLOP/s) sits at **19.5%** occupancy and *beats the highest-occupancy config* (A, 30.5%) by ~10%: cranking occupancy up by shrinking the tile made it slower. And the throughput ranking tracks **`MfmaUtil`** almost exactly (34.0 ≳ 33.1 > 29.8 > 25.7 > 21.8) — not occupancy. That's the whole argument in five rows: the matrix-engine busy counter predicts performance; the occupancy percentage doesn't.
+Read that table against the "maximize occupancy" advice and it falls apart. **Every fast config lives at 10–30% occupancy** — nothing good is anywhere near the ceiling. The peak (B) sits at **19.5%** occupancy and *beats the highest-occupancy config* (A, 30.5%) by ~10%: cranking occupancy up by shrinking the tile made it slower. And the throughput ranking tracks **`MfmaUtil`** almost exactly (34.0 ≳ 33.1 > 29.8 > 25.7 > 21.8) — not occupancy. That's the whole argument in five rows: the matrix-engine busy counter predicts performance; the occupancy percentage doesn't.
 
 It isn't "lower occupancy is always better," either — it's a sweet spot. Push the tile too far (C: 172 VGPR → 9.6% occupancy) and you thin the wave count below what's needed to hide latency; MfmaUtil and throughput both fall. Push it until it spills (E) and you give the rest back. The peak is interior, at low occupancy, on the far side of where the advice would have told you to stop.
 
-One more thing the profiler shows: config B's VGPR-limited *ceiling* is `floor(512/112) = 4` waves/SIMD = 50%, but rocprofv3 measures **19.5%**. That gap — jagged-expert imbalance, grid tails, waves draining at the edges — is exactly the "ceiling is not the time-average" caveat from the end of Part 2, live on a real kernel. The shape of this trade is the same one Volkov measured more than fifteen years ago; only the counters have new names.
+The shape of this trade is the same one Volkov measured more than fifteen years ago; only the counters have new names.
 
-*Methodology: MI355X (gfx950), ROCm 7.2.3 / Triton 3.6; one fixed grouped-GEMM shape with only `BLOCK_M/N/K` and warps/stages varied. Occupancy, `MfmaUtil`, and `VALUBusy` are rocprofv3 derived metrics; TFLOP/s is an 80-iteration median wall-clock (`2·M·N·K / time`); "%peak" is against the ~5 PFLOP **dense** MXFP8 matrix peak — grouped GEMM over jagged experts can't reach dense peak, so read it as a relative scale. Reproduce it with the driver ([`occ_tile_sweep.py`](/blog/occupancy-mi355x/occ_tile_sweep.py)) under `rocprofv3 --pmc MfmaUtil OccupancyPercent VALUBusy`.*
+*Methodology: MI355X (gfx950), ROCm 7.2.3 / Triton 3.6; one fixed grouped-GEMM shape with only `BLOCK_M/N/K` and warps/stages varied. Occupancy, `MfmaUtil`, and `VALUBusy` are rocprofv3 derived metrics; throughput is reported *relative to the fastest config* (B), from an 80-iteration median wall-clock. Counters were collected under `rocprofv3 --pmc MfmaUtil OccupancyPercent VALUBusy`.*
 
 ### So what should you actually optimize?
 
