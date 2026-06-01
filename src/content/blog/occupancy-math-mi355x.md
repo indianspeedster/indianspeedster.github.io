@@ -16,7 +16,7 @@ The post is in three parts:
 
 - **Part 1 — The MI355X architecture.** The CU, the four SIMDs, the wavefront, the Matrix Core, and the memory hierarchy that feeds them — the resources the math counts.
 - **Part 2 — Occupancy math.** The definition, the four limiters (VGPRs, SGPRs, LDS, and workgroup/barrier slots), the per-SIMD vs per-CU split that trips everyone up, worked examples, and how to measure occupancy for real.
-- **Part 3 — Better performance at lower occupancy.** The twist at the end: once you can compute the ceiling, why reaching for it is often the wrong move. Little's Law, ILP versus occupancy, and a tile sweep where occupancy drops while throughput climbs.
+- **Part 3 — Better performance at lower occupancy.** The twist at the end: once you can compute the ceiling, why reaching for it is often the wrong move. Little's Law, ILP versus occupancy, and a microbenchmark where the matrix core stays saturated even as occupancy collapses.
 
 Occupancy is worth understanding precisely — both so you can fix the kernels that are genuinely occupancy-limited, and so you can recognize the ones that aren't.
 
@@ -43,7 +43,7 @@ A CU is four SIMD units plus shared infrastructure. Each SIMD is 64 lanes wide a
 - **SGPRs — ~800 per SIMD.** Scalar registers, allocated per wave. Rarely the binding limit.
 - **LDS — 160 KB, shared across all four SIMDs.** One physical scratchpad per CU. It's the cooperation mechanism for a workgroup, and on CDNA4 it's 2.5× the size of CDNA3's 64 KB.
 
-Here's the distinction to burn in: **the register files are per-SIMD; the LDS is per-CU.** A wave that lands on SIMD 0 cannot touch SIMD 1's registers, but every wave in a workgroup — wherever it lands — sees the same LDS. That single asymmetry is why the three occupancy limiters in Part 2 don't share a denominator.
+Here's the distinction to burn in: **the register files are per-SIMD; the LDS is per-CU.** A wave that lands on SIMD 0 cannot touch SIMD 1's registers, but every wave in a workgroup — wherever it lands — sees the same LDS. That single asymmetry is why the four occupancy limiters in Part 2 don't share a denominator.
 
 ![mi355x_02_cu_anatomy.svg](/blog/occupancy-mi355x/mi355x_02_cu_anatomy.svg)
 
@@ -319,7 +319,7 @@ There are two ways to put L/T independent MFMAs in flight:
 - **TLP (occupancy):** many resident waves, each issuing one MFMA. The independence comes from *different waves*.
 - **ILP:** fewer waves, each issuing several *independent* MFMAs — multiple accumulator tiles advanced in parallel inside one wave. The independence comes from *within the wave*.
 
-Both satisfy Little's Law. And here's the CDNA4-specific tension: the MFMA accumulator — whether the compiler parks it in regular VGPRs or in AccVGPRs — comes out of the *same* 512-entry register file as your operands (≤256 of each type, flexibly split; on the kernels above it's 0 AccVGPRs, with the accumulator living in regular VGPRs). So holding several independent accumulator tiles for ILP spends real register budget: it raises the wave's total VGPR count and therefore pushes occupancy **down**. That's not a flaw in the plan; it *is* the plan. ILP and occupancy are two ways to spend one 512-register budget to satisfy Little's Law, and this section's whole claim is that spending it on bigger per-wave tiles (ILP) usually beats spending it on more waves (TLP). The accumulators aren't free — they're simply the better thing to buy.
+Both satisfy Little's Law. And here's the CDNA4-specific tension: the MFMA accumulator — whether the compiler parks it in regular VGPRs or in AccVGPRs — comes out of the *same* 512-entry register file as your operands (≤256 of each type, flexibly split; on the small tile above it's 0 AccVGPRs, with the accumulator living in regular VGPRs). So holding several independent accumulator tiles for ILP spends real register budget: it raises the wave's total VGPR count and therefore pushes occupancy **down**. That's not a flaw in the plan; it *is* the plan. ILP and occupancy are two ways to spend one 512-register budget to satisfy Little's Law, and this section's whole claim is that spending it on bigger per-wave tiles (ILP) usually beats spending it on more waves (TLP). The accumulators aren't free — they're simply the better thing to buy.
 
 ![mi355x_07_tlp_vs_ilp.svg](/blog/occupancy-mi355x/mi355x_07_tlp_vs_ilp.svg)
 
@@ -351,7 +351,7 @@ mfma_ilp(const v8i* A, const v8i* B, float* out, int iters) {
     float s = 0;                                // sink so the loop isn't optimized away
     #pragma unroll
     for (int i = 0; i < ILP; ++i) s += acc[i][0];
-    if (s == -1.f) out[lane] = s;
+    if (s == -1.f) out[0] = s;
 }
 // launch:  mfma_ilp<8><<<grid, 256, lds_bytes>>>(A, B, out, iters);
 //          raise lds_bytes to walk occupancy down without touching ILP.
@@ -361,7 +361,7 @@ Everything that matters is in those two nested loops: `ILP` independent accumula
 
 ![mi355x_12_mfma_ilp.svg](/blog/occupancy-mi355x/mi355x_12_mfma_ilp.svg)
 
-Read it left to right. At the **far-left, lowest-occupancy point** (~6%), a single dependent chain (ILP=1) reaches only ~3.43 PFLOP/s — about 71% of the ILP=8 plateau — the matrix core stalls between dependent ops, and with so few waves resident there's nothing to fill the gaps. Add ILP and the gaps fill from *inside* the wave: ILP=8 sits at essentially full throughput at that same ~6% occupancy. In fact the **ILP=8 curve is flat across the entire sweep** — it is essentially indifferent to occupancy, because one wave already carries enough independent work to keep the matrix unit busy. In absolute terms that flat line sits at about **4.84 PFLOP/s — roughly 97% of the MI355X's ~5 PFLOP MXFP8 matrix peak** — and it holds that across the entire occupancy range, from ~24% down to ~6%. A single well-fed wave per SIMD is enough to saturate the matrix core. The ILP=1 curve, by contrast, has to *climb*: only as more waves go resident does a neighbor's MFMAs cover its latency, and even then it tops out below the high-ILP configs.
+Read it left to right. At the **far-left, lowest-occupancy point** (~6%), a single dependent chain (ILP=1) reaches only ~3.43 PFLOP/s — about 71% of the ILP=8 plateau — the matrix core stalls between dependent ops, and with so few waves resident there's nothing to fill the gaps. Add ILP and the gaps fill from *inside* the wave: ILP=8 sits at essentially full throughput at that same ~6% occupancy. In fact the **ILP=8 curve is flat across the entire sweep** — it is essentially indifferent to occupancy, because one wave already carries enough independent work to keep the matrix unit busy. In absolute terms that flat line sits at about **4.84 PFLOP/s — roughly 97% of the MI355X's ~5 PFLOP MXFP8 matrix peak** — and it holds that across the entire occupancy range, from ~24% down to ~6%. A single well-fed wave per SIMD is enough to saturate the matrix core. (One honest caveat: that 4.84 is an *issue ceiling* — the microbench keeps its operands register-resident and moves no memory, so a real HBM-fed GEMM, which must also stream its inputs in, lands lower. What the sweep isolates is the matrix engine itself, and that is emphatically not the resource occupancy was supposed to be protecting.) The ILP=1 curve, by contrast, has to *climb*: only as more waves go resident does a neighbor's MFMAs cover its latency, and even then it tops out below the high-ILP configs.
 
 That's Little's Law made visible. The matrix core wants a fixed number of independent MFMAs in flight; you can supply them with eight waves of one chain each, or one wave of eight chains — and the second route reaches the same throughput at a fraction of the occupancy. rocprofv3 confirms the mechanism rather than just the outcome: at that lowest occupancy, `MfmaUtil` reads **35% for ILP=1 but 49% for ILP=8** — identical wave counts, the matrix engine simply has more independent work to chew on.
 
