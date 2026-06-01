@@ -367,6 +367,24 @@ That's Little's Law made visible. The matrix core wants a fixed number of indepe
 
 *Methodology: MI355X (gfx950), ROCm 7.0; a single HIP kernel where each wave runs `K` independent `v_mfma_f32_16x16x128_f8f6f4` accumulator chains (`K` = ILP), with occupancy throttled separately by reserving dynamic LDS so a controlled number of waves co-reside per CU. `OccupancyPercent` and `MfmaUtil` are rocprofv3 derived metrics; throughput is a median over repeated launches in absolute PFLOP/s (`GMFMA/s × 65,536 ÷ 1e6`, where `65,536 = 2·16·16·128` FLOP per `16×16×128` MFMA) — ILP and occupancy are varied on independent axes so neither stands in for the other.*
 
+**The same thing in [Gluon](https://github.com/ROCm/gfx950-gluon-tutorials).** The HIP kernel above is the bare-metal version, but the experiment ports cleanly to Gluon — Triton's new tile-level dialect — where the ILP knob is simply the accumulator width: one `mfma_scaled` on a `16×(16·ILP)` tile emits ILP independent 16×16×128 fragments.
+
+```python
+@gluon.jit
+def mfma_ilp(out_ptr, iters, ILP: gl.constexpr):
+    mfma = gl.amd.AMDMFMALayout(version=4, instr_shape=[16, 16, 128], transposed=True, warps_per_cta=[1, 1])
+    dotA = gl.DotOperandLayout(0, mfma, k_width=32)
+    dotB = gl.DotOperandLayout(1, mfma, k_width=32)
+    a   = gl.full([16, 128],       1, gl.float8e4nv, dotA)   # operands register-resident
+    b   = gl.full([128, 16 * ILP], 1, gl.float8e4nv, dotB)
+    acc = gl.zeros([16, 16 * ILP], gl.float32, mfma)
+    for _ in range(iters):                                   # one call = ILP independent MFMAs
+        acc = gl.amd.cdna4.mfma_scaled(a, None, "e4m3", b, None, "e4m3", acc)
+    # ... store acc so the loop survives ...
+```
+
+On the same MI355X this reaches **4.97 PFLOP/s — 99% of the MXFP8 matrix peak** at full occupancy (a hair above the HIP version, since the Gluon loop carries no per-iteration address arithmetic), and the ILP contrast reproduces: at low wave counts, eight independent chains deliver ~1.8× a single dependent one. Same physics, same ceiling, on AMD's own tile-level toolchain.
+
 ### Hiding memory latency with fewer waves
 
 The same logic covers memory. Little's Law for HBM:
