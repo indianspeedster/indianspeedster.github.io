@@ -8,6 +8,10 @@ draft: false
 
 Ask a GPU kernel engineer how their kernel is doing and *occupancy* comes up within a sentence or two. It's the number everyone quotes and the dial everyone reaches for — and, in my experience, the metric people understand least. Most treat it as an opaque percentage the profiler hands back. It isn't. Occupancy is fully derivable by hand from a kernel's resource usage and a handful of fixed hardware limits, and being able to do that derivation changes how you tune.
 
+> **TL;DR.** On MI355X, occupancy is `min(VGPR, SGPR, LDS, workgroup)` limiters — each a fixed hardware budget divided by what your kernel spends, derivable by hand from the binary. The VGPR file is **512 per lane, shared** by regular and accumulator registers (not a separate AccVGPR pool). And maximizing occupancy is usually the wrong goal: in a measured MXFP8 grouped-GEMM sweep below, peak throughput sat at **19.5% occupancy** and tracked *matrix-engine utilization*, not occupancy.
+>
+> **Three myths this post retires:** (1) CDNA4 doubled the vector register file — no, it's still 512/lane. (2) AccVGPRs are a separate pool — no, regular + accumulator share one 512 file. (3) Higher occupancy means faster — no, peak throughput routinely lives at 2–4 waves/SIMD.
+
 This is a from-first-principles guide to occupancy math on the AMD Instinct MI355X (CDNA4, gfx950). We'll build it from the silicon up: what the hardware budget actually is, which three resources cap how many wavefronts can go resident on a SIMD, and how to compute a kernel's occupancy ceiling on paper and then confirm it with rocprofv3. The worked examples lean on MXFP8 grouped GEMM tiles — the kind of MoE kernel where these numbers decide whether you reach peak.
 
 The post is in three parts:
@@ -52,6 +56,23 @@ The hardware doesn't execute threads one at a time. It executes **wavefronts**: 
 A SIMD holds up to **8 wavefronts resident** at once. Resident means their registers are live and reserved; only one wave issues per cycle, and the scheduler hides latency by switching to a different ready wave whenever the current one stalls. Occupancy is just the ratio of resident waves to that maximum of 8 — counted per SIMD, capped at 32 per CU. Crucially, occupancy says nothing about whether those waves are doing useful work; it only counts how many are parked. Hold that thought for Part 3.
 
 ![mi355x_03_wavefront_model.svg](/blog/occupancy-mi355x/mi355x_03_wavefront_model.svg)
+
+### If you think in CUDA: a Rosetta stone
+
+AMD's vocabulary maps almost one-to-one onto NVIDIA's. If your instincts are CUDA-shaped, read this first and the rest of the post translates itself:
+
+| AMD (CDNA4) | NVIDIA | Notes |
+|---|---|---|
+| Compute Unit (CU) | SM | 256 on MI355X |
+| SIMD — 4 per CU | SM sub-partition — 4 per SM | 64 lanes each |
+| Wavefront — 64 threads | Warp — 32 threads | AMD waves are 2× wide |
+| VGPR / AccVGPR | registers | one shared 512/lane file |
+| LDS — 160 KB/CU | shared memory | per-CU scratchpad |
+| Matrix Core / `v_mfma_*` | Tensor Core / `mma` | |
+| waves resident per SIMD (≤8) | warps resident per SM | the occupancy ratio |
+| workgroup · `s_barrier` | thread block · `__syncthreads()` | |
+
+The one place the analogy frays: NVIDIA has no separate "accumulator register" concept — on CDNA4 the AccVGPRs are simply part of the same register file, which is exactly the subtlety Parts 2 and 3 hinge on.
 
 ### The Matrix Core
 
@@ -306,7 +327,11 @@ Both satisfy Little's Law. And here's the CDNA4-specific tension: the MFMA accum
 
 ### Hiding arithmetic latency with fewer waves
 
-You can watch this happen with a microbenchmark: a kernel whose inner loop issues K independent MFMA chains (`#pragma unroll`, K separate accumulator tiles), run at varying occupancy. At K=1 (no ILP) you need high occupancy to approach peak; raise K to 2–4 and the matrix core saturates at *2–4 waves/SIMD* instead of 8 — the independent work it needs now comes from inside the wave rather than from a crowd of them. You don't have to take this on faith: the tile sweep in the case study below shows exactly this shape on a real grouped GEMM, with matrix-engine utilization peaking at low occupancy.
+You can watch this happen directly. Take a *dense* MXFP8 matmul on the MI355X and grow the per-wave output tile — which is the same thing as adding independent MFMA chains, since a bigger tile is more accumulator fragments advanced in parallel inside each wave. Here's the measured result, occupancy and matrix-engine busy straight from rocprofv3:
+
+![mi355x_11_ilp_sweep.svg](/blog/occupancy-mi355x/mi355x_11_ilp_sweep.svg)
+
+As the tile grows from 64×64 to 256×128, occupancy *falls* from 46% to 23% — and the matrix core gets **busier**, not idler: MFMA utilization climbs from 29% to 40% and throughput from 1231 to 1751 TFLOP/s. The smallest-tile config has the *most* resident waves and the *least*-fed matrix core; the fast one runs at 23% occupancy (under two waves/SIMD) because the independent work the matrix core needs now comes from inside each wave instead of from a crowd of them. Push one tile further — 256×256 — and it spills to scratch: the knee where bigger stops paying. The independent operations Little's Law asked for came from ILP, and you reached peak throughput at a third of the occupancy. (Driver: [`ilp_microbench.py`](/blog/occupancy-mi355x/ilp_microbench.py).)
 
 ### Hiding memory latency with fewer waves
 
@@ -323,6 +348,12 @@ At 8 TB/s, even a sub-microsecond HBM latency implies only a few megabytes in fl
 Recall from Part 1 that only the register file feeds the matrix core at full rate; LDS is slower and bank-conflict-prone. CDNA4's headline 160 KB of LDS is a real gift, but it's tempting to misread it as "fast memory you should pack data into." The accumulator belongs in registers — regular or accumulator VGPRs, the compiler's choice — never in LDS. That's the only thing that sustains peak MFMA.
 
 So what *is* the extra LDS for? Depth. Use it to stage more of the operand stream ahead of the matrix core — deeper software-pipelined prefetch, more buffered K-steps — so the compute units never wait on HBM. The 160 KB buys a longer runway to keep loads ahead of math, which is precisely what lets a low-occupancy, big-tile kernel stay fed. It's a latency-hiding budget, not an accumulator substitute.
+
+### The roofline underneath all of this
+
+Step back and the whole argument is a roofline argument. The MI355X's machine balance — peak compute over peak bandwidth — is about `5 PFLOP/s ÷ 8 TB/s ≈ 625 FLOP/byte` for MXFP8. To live on the flat matrix-core roof rather than the bandwidth slope, a kernel's arithmetic intensity has to clear that ridge.
+
+Here's the connection occupancy-chasers miss: **arithmetic intensity is set by tile size, not by occupancy.** A bigger register-resident output tile reuses each loaded byte across more MFMAs, so its AI climbs with the tile's footprint — walking the kernel up toward the ridge. Adding waves does nothing good for AI: it splits the same 512-VGPR file into smaller tiles, *lowering* AI and sliding you back down the bandwidth slope. The two knobs aren't symmetric — occupancy moves you along the latency-hiding axis; tile size moves you along the roofline. Kernels that win spend the register file on the tile to buy arithmetic intensity, and lean on ILP to hide whatever latency is left.
 
 ### The trap: cranking occupancy can starve the matrix core
 
@@ -351,15 +382,13 @@ tile  BM×BN×BK (w/s)   VGPR  LDS    spill   occ%   MFMA%  VALU%   TFLOP/s   %p
   E   256×256×256 (8/2)  128 132 KB  spills  15.9   21.8    7.4      994     ~20%
 ```
 
-![mi355x_09_sweep.svg](/blog/occupancy-mi355x/mi355x_09_sweep.svg)
-
 Read that table against the "maximize occupancy" advice and it falls apart. **Every fast config lives at 10–30% occupancy** — nothing good is anywhere near the ceiling. The peak (B, 1363 TFLOP/s) sits at **19.5%** occupancy and *beats the highest-occupancy config* (A, 30.5%) by ~10%: cranking occupancy up by shrinking the tile made it slower. And the throughput ranking tracks **`MfmaUtil`** almost exactly (34.0 ≳ 33.1 > 29.8 > 25.7 > 21.8) — not occupancy. That's the whole argument in five rows: the matrix-engine busy counter predicts performance; the occupancy percentage doesn't.
 
 It isn't "lower occupancy is always better," either — it's a sweet spot. Push the tile too far (C: 172 VGPR → 9.6% occupancy) and you thin the wave count below what's needed to hide latency; MfmaUtil and throughput both fall. Push it until it spills (E) and you give the rest back. The peak is interior, at low occupancy, on the far side of where the advice would have told you to stop.
 
 One more thing the profiler shows: config B's VGPR-limited *ceiling* is `floor(512/112) = 4` waves/SIMD = 50%, but rocprofv3 measures **19.5%**. That gap — jagged-expert imbalance, grid tails, waves draining at the edges — is exactly the "ceiling is not the time-average" caveat from the end of Part 2, live on a real kernel. The shape of this trade is the same one Volkov measured more than fifteen years ago; only the counters have new names.
 
-*Methodology: MI355X (gfx950), ROCm 7.2.3 / Triton 3.6; one fixed grouped-GEMM shape with only `BLOCK_M/N/K` and warps/stages varied. Occupancy, `MfmaUtil`, and `VALUBusy` are rocprofv3 derived metrics; TFLOP/s is an 80-iteration median wall-clock (`2·M·N·K / time`); "%peak" is against the ~5 PFLOP **dense** MXFP8 matrix peak — grouped GEMM over jagged experts can't reach dense peak, so read it as a relative scale, not a roofline.*
+*Methodology: MI355X (gfx950), ROCm 7.2.3 / Triton 3.6; one fixed grouped-GEMM shape with only `BLOCK_M/N/K` and warps/stages varied. Occupancy, `MfmaUtil`, and `VALUBusy` are rocprofv3 derived metrics; TFLOP/s is an 80-iteration median wall-clock (`2·M·N·K / time`); "%peak" is against the ~5 PFLOP **dense** MXFP8 matrix peak — grouped GEMM over jagged experts can't reach dense peak, so read it as a relative scale. Reproduce it with the driver ([`occ_tile_sweep.py`](/blog/occupancy-mi355x/occ_tile_sweep.py)) under `rocprofv3 --pmc MfmaUtil OccupancyPercent VALUBusy`.*
 
 ### So what should you actually optimize?
 
