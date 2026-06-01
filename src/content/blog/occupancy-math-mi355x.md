@@ -365,7 +365,7 @@ Read it left to right. At the **far-left, lowest-occupancy point** (~6%), a sing
 
 That's Little's Law made visible. The matrix core wants a fixed number of independent MFMAs in flight; you can supply them with eight waves of one chain each, or one wave of eight chains — and the second route reaches the same throughput at a fraction of the occupancy. rocprofv3 confirms the mechanism rather than just the outcome: at that lowest occupancy, `MfmaUtil` reads **35% for ILP=1 but 49% for ILP=8** — identical wave counts, the matrix engine simply has more independent work to chew on.
 
-*Methodology: MI355X (gfx950), ROCm 7.0; a single HIP kernel where each wave runs `K` independent `v_mfma_f32_16x16x128_f8f6f4` accumulator chains (`K` = ILP), with occupancy throttled separately by reserving dynamic LDS so a controlled number of waves co-reside per CU. `OccupancyPercent` and `MfmaUtil` are rocprofv3 derived metrics; throughput is a median over repeated launches in absolute PFLOP/s (`GMFMA/s × 2·16·16·128 FLOP`) — ILP and occupancy are varied on independent axes so neither stands in for the other.*
+*Methodology: MI355X (gfx950), ROCm 7.0; a single HIP kernel where each wave runs `K` independent `v_mfma_f32_16x16x128_f8f6f4` accumulator chains (`K` = ILP), with occupancy throttled separately by reserving dynamic LDS so a controlled number of waves co-reside per CU. `OccupancyPercent` and `MfmaUtil` are rocprofv3 derived metrics; throughput is a median over repeated launches in absolute PFLOP/s (`GMFMA/s × 65,536 ÷ 1e6`, where `65,536 = 2·16·16·128` FLOP per `16×16×128` MFMA) — ILP and occupancy are varied on independent axes so neither stands in for the other.*
 
 ### Hiding memory latency with fewer waves
 
