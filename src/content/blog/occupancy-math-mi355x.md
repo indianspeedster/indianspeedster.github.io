@@ -430,3 +430,11 @@ The kernels that win on MI355X treat the 512-VGPR file and the matrix core as th
 > **MI355X occupancy cheat sheet** (gfx950, verified on-device) — 512 VGPR/lane per SIMD (private), shared by regular ≤256 + accumulator ≤256 · ~800 SGPR/SIMD, ≤102/wave · 160 KB LDS/CU (shared) · max 8 waves/SIMD, 32/CU · VGPR alloc granularity 8 · limiters: VGPR (regular+acc), SGPR, LDS, workgroup (+barriers) · occupancy = min(limiters), then clamp.
 
 *Compute the ceiling so you know where it is — then decide, deliberately, how far below it to stop.*
+
+---
+
+## References
+
+- Vasily Volkov, **"Better Performance at Lower Occupancy"**, NVIDIA GTC 2010 — the original case that throughput can peak well below full occupancy when ILP, not more waves, hides latency. The argument this post's Part 3 carries onto CDNA4. [[PDF]](https://www.nvidia.com/content/GTC-2010/pdfs/2238_GTC2010.pdf)
+- AMD, **"AMD Instinct CDNA4 Instruction Set Architecture Reference Guide"** (Aug 2025) — source for the unified 512-entry-per-lane VGPR/AccVGPR file (§3.6.4), the eight-Dword allocation granularity, and the scaled-MFMA (`v_mfma_scale_f32_*_f8f6f4`) instructions. [[PDF]](https://www.amd.com/content/dam/amd/en/documents/instinct-tech-docs/instruction-set-architectures/amd-instinct-cdna4-instruction-set-architecture.pdf)
+- AMD, **"Introducing AMD CDNA 4 Architecture"** (whitepaper) — the MI355X/CDNA4 hardware the math is built on: 256 compute units, 160 KB LDS/CU, the Matrix Core, and the ~5 PFLOP MXFP8 / 10 PFLOP MXFP6·FP4 peak rates. [[PDF]](https://www.amd.com/content/dam/amd/en/documents/instinct-tech-docs/white-papers/amd-cdna-4-architecture-whitepaper.pdf)
