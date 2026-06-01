@@ -367,7 +367,7 @@ That's Little's Law made visible. The matrix core wants a fixed number of indepe
 
 *Methodology: MI355X (gfx950), ROCm 7.0; a single HIP kernel where each wave runs `K` independent `v_mfma_f32_16x16x128_f8f6f4` accumulator chains (`K` = ILP), with occupancy throttled separately by reserving dynamic LDS so a controlled number of waves co-reside per CU. `OccupancyPercent` and `MfmaUtil` are rocprofv3 derived metrics; throughput is a median over repeated launches in absolute PFLOP/s (`GMFMA/s × 65,536 ÷ 1e6`, where `65,536 = 2·16·16·128` FLOP per `16×16×128` MFMA) — ILP and occupancy are varied on independent axes so neither stands in for the other.*
 
-**The same thing in [Gluon](https://github.com/ROCm/gfx950-gluon-tutorials).** The HIP kernel above is the bare-metal version, but the experiment ports cleanly to Gluon — Triton's new tile-level dialect — where the ILP knob is simply the accumulator width: one `mfma_scaled` on a `16×(16·ILP)` tile emits ILP independent 16×16×128 fragments.
+**The same thing in [Gluon](https://github.com/triton-lang/triton/tree/main/python/triton/experimental/gluon).** The HIP kernel above is the bare-metal version, but the experiment ports cleanly to Gluon — Triton's new tile-level dialect — where the ILP knob is simply the accumulator width: one `mfma_scaled` on a `16×(16·ILP)` tile emits ILP independent 16×16×128 fragments.
 
 ```python
 @gluon.jit
