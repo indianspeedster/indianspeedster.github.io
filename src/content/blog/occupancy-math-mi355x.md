@@ -388,8 +388,6 @@ Read that table against the "maximize occupancy" advice and it falls apart. **Ev
 
 It isn't "lower occupancy is always better," either — it's a sweet spot. Push the tile too far (C: 172 VGPR → 9.6% occupancy) and you thin the wave count below what's needed to hide latency; MfmaUtil and throughput both fall. Push it until it spills (E) and you give the rest back. The peak is interior, at low occupancy, on the far side of where the advice would have told you to stop.
 
-The shape of this trade is the same one Volkov measured more than fifteen years ago; only the counters have new names.
-
 *Methodology: MI355X (gfx950), ROCm 7.2.3 / Triton 3.6; one fixed grouped-GEMM shape with only `BLOCK_M/N/K` and warps/stages varied. Occupancy, `MfmaUtil`, and `VALUBusy` are rocprofv3 derived metrics; throughput is reported *relative to the fastest config* (B), from an 80-iteration median wall-clock. Counters were collected under `rocprofv3 --pmc MfmaUtil OccupancyPercent VALUBusy`.*
 
 ### So what should you actually optimize?
