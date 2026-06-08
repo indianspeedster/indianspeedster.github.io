@@ -1,0 +1,80 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1100 560" width="1100" height="560" font-family="system-ui, -apple-system, sans-serif">
+  <text x="550" y="30" text-anchor="middle" font-size="22" font-weight="600" fill="#1e1e1e">Floating-Point Bit Layouts: FP32 → MXFP8</text>
+
+  <!-- FP32 -->
+  <text x="10" y="90" font-size="15" fill="#1e1e1e">FP32</text>
+  <rect x="60" y="70" width="700" height="36" fill="#f1f3f5" stroke="#ced4da" stroke-width="1"/>
+  <rect x="60" y="70" width="44" height="36" fill="#ffd8a8" stroke="#ced4da" stroke-width="1"/>
+  <text x="82" y="93" text-anchor="middle" font-size="14" fill="#1e1e1e">S</text>
+  <rect x="104" y="70" width="362" height="36" fill="#a5d8ff" stroke="#ced4da" stroke-width="1"/>
+  <text x="285" y="93" text-anchor="middle" font-size="14" fill="#1e1e1e">8-bit exponent</text>
+  <rect x="466" y="70" width="294" height="36" fill="#b2f2bb" stroke="#ced4da" stroke-width="1"/>
+  <text x="613" y="93" text-anchor="middle" font-size="14" fill="#1e1e1e">23-bit mantissa</text>
+  <text x="770" y="93" font-size="12" fill="#868e96">Range: ±3.4×10³⁸, 10⁻⁷ precision</text>
+
+  <!-- BF16 -->
+  <text x="10" y="145" font-size="15" fill="#1e1e1e">BF16</text>
+  <rect x="60" y="125" width="700" height="36" fill="#f1f3f5" stroke="#ced4da" stroke-width="1"/>
+  <rect x="60" y="125" width="44" height="36" fill="#ffd8a8" stroke="#ced4da" stroke-width="1"/>
+  <text x="82" y="148" text-anchor="middle" font-size="14" fill="#1e1e1e">S</text>
+  <rect x="104" y="125" width="362" height="36" fill="#a5d8ff" stroke="#ced4da" stroke-width="1"/>
+  <text x="285" y="148" text-anchor="middle" font-size="14" fill="#1e1e1e">8-bit exponent</text>
+  <rect x="466" y="125" width="294" height="36" fill="#b2f2bb" stroke="#ced4da" stroke-width="1"/>
+  <text x="613" y="148" text-anchor="middle" font-size="14" fill="#1e1e1e">7-bit mantissa</text>
+  <text x="770" y="148" font-size="12" fill="#868e96">Range: ±3.4×10³⁸, 0.4% precision</text>
+
+  <!-- FP8 E5M2 -->
+  <text x="10" y="200" font-size="15" fill="#1e1e1e">E5M2</text>
+  <rect x="60" y="180" width="350" height="36" fill="#f1f3f5" stroke="#ced4da" stroke-width="1"/>
+  <rect x="60" y="180" width="44" height="36" fill="#ffd8a8" stroke="#ced4da" stroke-width="1"/>
+  <text x="82" y="203" text-anchor="middle" font-size="14" fill="#1e1e1e">S</text>
+  <rect x="104" y="180" width="219" height="36" fill="#a5d8ff" stroke="#ced4da" stroke-width="1"/>
+  <text x="213" y="203" text-anchor="middle" font-size="14" fill="#1e1e1e">5-bit exponent</text>
+  <rect x="323" y="180" width="87" height="36" fill="#b2f2bb" stroke="#ced4da" stroke-width="1"/>
+  <text x="367" y="203" text-anchor="middle" font-size="14" fill="#1e1e1e">M2</text>
+  <text x="420" y="203" font-size="12" fill="#868e96">Range: ±57344, 25% precision — wide, coarse</text>
+
+  <!-- FP8 E4M3 -->
+  <text x="10" y="255" font-size="15" fill="#1e1e1e">E4M3</text>
+  <rect x="60" y="235" width="350" height="36" fill="#f1f3f5" stroke="#ced4da" stroke-width="1"/>
+  <rect x="60" y="235" width="44" height="36" fill="#ffd8a8" stroke="#ced4da" stroke-width="1"/>
+  <text x="82" y="258" text-anchor="middle" font-size="14" fill="#1e1e1e">S</text>
+  <rect x="104" y="235" width="175" height="36" fill="#a5d8ff" stroke="#ced4da" stroke-width="1"/>
+  <text x="191" y="258" text-anchor="middle" font-size="14" fill="#1e1e1e">4-bit exponent</text>
+  <rect x="279" y="235" width="131" height="36" fill="#b2f2bb" stroke="#ced4da" stroke-width="1"/>
+  <text x="344" y="258" text-anchor="middle" font-size="14" fill="#1e1e1e">M3</text>
+  <text x="420" y="258" font-size="12" fill="#c92a2a">Range: ±448, 6% precision — narrow, precise</text>
+
+  <!-- MXFP8 -->
+  <text x="10" y="325" font-size="15" fill="#2b8a3e" font-weight="600">MXFP8</text>
+  <rect x="60" y="300" width="700" height="56" fill="none" stroke="#40c057" stroke-width="2" stroke-dasharray="6,3" rx="6"/>
+  <rect x="60" y="308" width="110" height="40" fill="#ffc9c9" stroke="#ff8787" stroke-width="2" rx="4"/>
+  <text x="115" y="324" text-anchor="middle" font-size="11" fill="#c92a2a">Shared Scale</text>
+  <text x="115" y="340" text-anchor="middle" font-size="11" fill="#c92a2a">E8M0 (8-bit)</text>
+  <text x="180" y="333" font-size="20" fill="#1e1e1e">+</text>
+  <rect x="200" y="315" width="200" height="28" fill="#a5d8ff" stroke="#74c0fc" stroke-width="1" rx="3"/>
+  <text x="300" y="334" text-anchor="middle" font-size="13" fill="#1e1e1e">32× E4M3 elements (256 bits)</text>
+  <text x="410" y="333" font-size="20" fill="#1e1e1e">=</text>
+  <text x="430" y="320" font-size="13" fill="#2b8a3e">1 Block = 264 bits for 32 values</text>
+  <text x="430" y="340" font-size="13" fill="#2b8a3e">= 8.25 bits/elem = 1.03 bytes/elem</text>
+
+  <!-- Legend -->
+  <text x="60" y="400" font-size="12" fill="#868e96">Legend:</text>
+  <rect x="120" y="390" width="14" height="14" fill="#ffd8a8" stroke="#ced4da" stroke-width="1"/>
+  <text x="140" y="401" font-size="12" fill="#1e1e1e">Sign</text>
+  <rect x="190" y="390" width="14" height="14" fill="#a5d8ff" stroke="#ced4da" stroke-width="1"/>
+  <text x="210" y="401" font-size="12" fill="#1e1e1e">Exponent</text>
+  <rect x="280" y="390" width="14" height="14" fill="#b2f2bb" stroke="#ced4da" stroke-width="1"/>
+  <text x="300" y="401" font-size="12" fill="#1e1e1e">Mantissa</text>
+  <rect x="375" y="390" width="14" height="14" fill="#ffc9c9" stroke="#ff8787" stroke-width="1"/>
+  <text x="395" y="401" font-size="12" fill="#1e1e1e">Block Scale (for MXFP8)</text>
+
+  <!-- Annotations -->
+  <line x1="500" y1="296" x2="500" y2="248" stroke="#c92a2a" stroke-width="1" stroke-dasharray="4,3"/>
+  <text x="510" y="245" font-size="11" fill="#c92a2a">Narrow: overflows</text>
+  <text x="510" y="258" font-size="11" fill="#c92a2a">beyond ±448</text>
+
+  <line x1="445" y1="358" x2="445" y2="395" stroke="#40c057" stroke-width="2"/>
+  <text x="455" y="395" font-size="12" fill="#2b8a3e">E8M0 scale × E4M3 data</text>
+  <text x="455" y="410" font-size="12" fill="#2b8a3e">→ FP32-like range, 1.94× compression vs BF16</text>
+</svg>

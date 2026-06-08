@@ -1,0 +1,88 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 670" width="1000" height="670" font-family="system-ui, -apple-system, sans-serif">
+  <text x="500" y="28" text-anchor="middle" font-size="19" font-weight="600" fill="#1e1e1e">MXFP8 GEMM Dataflow: Load → Dequantize → Multiply-Accumulate</text>
+
+  <!-- Stage labels -->
+  <text x="150" y="65" text-anchor="middle" font-size="13" fill="#868e96">① HBM Input</text>
+  <text x="530" y="65" text-anchor="middle" font-size="13" fill="#868e96">② On-the-fly Dequant</text>
+  <text x="810" y="65" text-anchor="middle" font-size="13" fill="#868e96">③ Matrix Core</text>
+
+  <!-- Matrix A input -->
+  <rect x="40" y="85" width="200" height="90" fill="#a5d8ff" stroke="#74c0fc" stroke-width="2" rx="8"/>
+  <text x="140" y="115" text-anchor="middle" font-size="14" font-weight="600" fill="#1e1e1e">Matrix A (activation)</text>
+  <text x="140" y="135" text-anchor="middle" font-size="12" fill="#495057">M×K, stored as MXFP8</text>
+  <text x="140" y="152" text-anchor="middle" font-size="12" fill="#495057">E4M3 data + E8M0 block scales</text>
+  <text x="140" y="169" text-anchor="middle" font-size="11" fill="#868e96">~1.03 bytes/element in HBM</text>
+
+  <!-- Arrow A -->
+  <line x1="242" y1="130" x2="340" y2="130" stroke="#495057" stroke-width="2" marker-end="url(#arrowDark)"/>
+
+  <!-- Matrix B input -->
+  <rect x="40" y="195" width="200" height="90" fill="#d0bfff" stroke="#9775fa" stroke-width="2" rx="8"/>
+  <text x="140" y="225" text-anchor="middle" font-size="14" font-weight="600" fill="#1e1e1e">Matrix B (weight)</text>
+  <text x="140" y="245" text-anchor="middle" font-size="12" fill="#495057">K×N, stored as MXFP8</text>
+  <text x="140" y="262" text-anchor="middle" font-size="12" fill="#495057">E4M3 data + E8M0 block scales</text>
+  <text x="140" y="279" text-anchor="middle" font-size="11" fill="#868e96">Pre-shuffled weight layout</text>
+
+  <!-- Arrow B -->
+  <line x1="242" y1="240" x2="340" y2="240" stroke="#495057" stroke-width="2" marker-end="url(#arrowDark)"/>
+
+  <!-- Dequantize box -->
+  <rect x="345" y="130" width="240" height="200" fill="#fff3bf" stroke="#fcc419" stroke-width="2" rx="8"/>
+  <text x="465" y="160" text-anchor="middle" font-size="14" font-weight="600" fill="#1e1e1e">On-the-fly Dequantization</text>
+  <text x="465" y="182" text-anchor="middle" font-size="12" fill="#495057">(happens inside the matrix core,</text>
+  <text x="465" y="198" text-anchor="middle" font-size="12" fill="#495057">no intermediate HBM write)</text>
+  <line x1="365" y1="212" x2="565" y2="212" stroke="#dee2e6" stroke-width="1"/>
+
+  <!-- Dequant equations -->
+  <text x="465" y="232" text-anchor="middle" font-size="12" fill="#2b8a3e">A_fp32 = A_e4m3 × 2^A_e8m0</text>
+  <text x="465" y="252" text-anchor="middle" font-size="12" fill="#2b8a3e">B_fp32 = B_e4m3 × 2^B_e8m0</text>
+  <line x1="365" y1="266" x2="565" y2="266" stroke="#dee2e6" stroke-width="1"/>
+  <text x="465" y="284" text-anchor="middle" font-size="11" fill="#868e96">Scale is power-of-2 →</text>
+  <text x="465" y="300" text-anchor="middle" font-size="11" fill="#868e96">dequant = bit-shift (near-zero cost)</text>
+  <text x="465" y="320" text-anchor="middle" font-size="11" fill="#868e96">Scale product: 2^(A_scale + B_scale)</text>
+
+  <!-- Arrow to matrix core -->
+  <line x1="587" y1="200" x2="680" y2="200" stroke="#495057" stroke-width="2" marker-end="url(#arrowDark)"/>
+
+  <!-- Matrix Core box -->
+  <rect x="685" y="130" width="230" height="140" fill="#b2f2bb" stroke="#40c057" stroke-width="2" rx="8"/>
+  <text x="800" y="160" text-anchor="middle" font-size="14" font-weight="600" fill="#1e1e1e">Matrix Core (MFMA)</text>
+  <text x="800" y="185" text-anchor="middle" font-size="12" fill="#2b8a3e">A_fp32 × B_fp32</text>
+  <text x="800" y="205" text-anchor="middle" font-size="12" fill="#2b8a3e">+ scale product adjustment</text>
+  <text x="800" y="230" text-anchor="middle" font-size="12" fill="#495057">Accumulate in FP32</text>
+  <rect x="710" y="242" width="180" height="22" fill="#e9ecef" stroke="#ced4da" stroke-width="1" rx="3"/>
+  <text x="800" y="257" text-anchor="middle" font-size="11" fill="#495057">V_MFMA_F32_32x32x16_MXFP8</text>
+
+  <!-- Output arrow -->
+  <line x1="800" y1="272" x2="800" y2="340" stroke="#495057" stroke-width="2" marker-end="url(#arrowDark)"/>
+
+  <!-- Output -->
+  <rect x="685" y="345" width="230" height="70" fill="#e9ecef" stroke="#adb5bd" stroke-width="2" rx="6"/>
+  <text x="800" y="372" text-anchor="middle" font-size="13" font-weight="600" fill="#1e1e1e">Output Matrix C [M×N]</text>
+  <text x="800" y="392" text-anchor="middle" font-size="12" fill="#495057">BF16 or FP32 precision</text>
+  <text x="800" y="408" text-anchor="middle" font-size="11" fill="#868e96">Write back to HBM</text>
+
+  <!-- Bottom details -->
+  <rect x="40" y="440" width="900" height="215" fill="#f8f9fa" stroke="#dee2e6" stroke-width="1.5" rx="6"/>
+
+  <text x="60" y="468" font-size="14" font-weight="600" fill="#1e1e1e">MFMA MXFP8 Instructions (CDNA4 / gfx950)</text>
+
+  <text x="60" y="492" font-size="12" fill="#495057">• V_MFMA_F32_32x32x16_MXFP8 — 32×32 tile, K=16 per cycle, FP32 accumulate</text>
+  <text x="60" y="510" font-size="12" fill="#495057">• V_MFMA_F32_16x16x32_MXFP8 — 16×16 tile, K=32 per cycle, FP32 accumulate</text>
+  <text x="60" y="528" font-size="12" fill="#495057">• V_MFMA_F32_32x32x32_MXFP8 — 32×32 tile, K=32 per cycle, FP32 accumulate</text>
+
+  <line x1="60" y1="542" x2="920" y2="542" stroke="#dee2e6" stroke-width="1"/>
+
+  <text x="60" y="564" font-size="14" font-weight="600" fill="#1e1e1e">Scale Granularity Comparison</text>
+  <text x="60" y="585" font-size="12" fill="#495057">Per-tensor scale: 1 scale for all elements → one outlier ruins the whole tensor</text>
+  <text x="60" y="603" font-size="12" fill="#495057">Per-token scale:  1 scale per row → one outlier ruins the whole row</text>
+  <text x="60" y="621" font-size="12" fill="#2b8a3e" font-weight="600">MXFP8 block scale: 1 scale per 32-element block → outlier damage localized to 31 neighbors only</text>
+
+  <text x="60" y="646" font-size="12" fill="#868e96">Throughput: 2× BF16 elements/byte → halved HBM traffic + double matrix-core throughput → 1.8–2.1× training speedup</text>
+
+  <defs>
+    <marker id="arrowDark" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#495057"/>
+    </marker>
+  </defs>
+</svg>
