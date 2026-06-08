@@ -1,0 +1,87 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1100 780" width="1100" height="780" font-family="system-ui, -apple-system, sans-serif">
+  <text x="550" y="30" text-anchor="middle" font-size="21" font-weight="600" fill="#1e1e1e">MXFP8 Block-Level Scaling: 32 Elements, 1 Shared Scale</text>
+
+  <!-- Step 1: Original Tensor -->
+  <text x="60" y="75" font-size="15" font-weight="600" fill="#1e1e1e">① Original Tensor (FP32/BF16)</text>
+  <rect x="60" y="90" width="520" height="50" fill="#f1f3f5" stroke="#adb5bd" stroke-width="2" rx="4"/>
+  <text x="320" y="120" text-anchor="middle" font-size="13" fill="#495057">[K dimension: 320 values at FP32/BF16]</text>
+
+  <!-- Arrow down -->
+  <line x1="320" y1="144" x2="320" y2="180" stroke="#868e96" stroke-width="2" marker-end="url(#arrowGray)"/>
+  <text x="340" y="168" font-size="13" fill="#868e96">Split into blocks of 32</text>
+
+  <!-- Step 2: Block Partitioning -->
+  <text x="60" y="205" font-size="15" font-weight="600" fill="#1e1e1e">② Block Partitioning (10 blocks)</text>
+
+  <g>
+    <rect x="60" y="220" width="48" height="38" fill="#d0bfff" stroke="#9775fa" stroke-width="1" rx="3"/>
+    <text x="84" y="244" text-anchor="middle" font-size="14" fill="#1e1e1e">B₀</text>
+    <rect x="112" y="220" width="48" height="38" fill="#d0bfff" stroke="#9775fa" stroke-width="1" rx="3"/>
+    <text x="136" y="244" text-anchor="middle" font-size="14" fill="#1e1e1e">B₁</text>
+    <text x="172" y="244" font-size="16" fill="#868e96">...</text>
+    <rect x="200" y="220" width="48" height="38" fill="#d0bfff" stroke="#9775fa" stroke-width="1" rx="3"/>
+    <text x="224" y="244" text-anchor="middle" font-size="14" fill="#1e1e1e">B₅</text>
+    <text x="260" y="244" font-size="16" fill="#868e96">...</text>
+    <rect x="290" y="220" width="48" height="38" fill="#d0bfff" stroke="#9775fa" stroke-width="1" rx="3"/>
+    <text x="314" y="244" text-anchor="middle" font-size="14" fill="#1e1e1e">B₉</text>
+  </g>
+
+  <!-- Arrow down -->
+  <line x1="320" y1="262" x2="320" y2="300" stroke="#868e96" stroke-width="2" marker-end="url(#arrowGray)"/>
+  <text x="340" y="286" font-size="13" fill="#868e96">Per-block: find max → compute scale → quantize E4M3</text>
+
+  <!-- Step 3: MXFP8 Storage (Block B₅ detail) -->
+  <text x="60" y="335" font-size="15" font-weight="600" fill="#1e1e1e">③ MXFP8 Storage — Block B₅ Example</text>
+
+  <!-- Scale box -->
+  <rect x="60" y="350" width="120" height="52" fill="#ffc9c9" stroke="#ff8787" stroke-width="2" rx="6"/>
+  <text x="120" y="370" text-anchor="middle" font-size="13" fill="#c92a2a">Scale = 2⁴</text>
+  <text x="120" y="388" text-anchor="middle" font-size="12" fill="#c92a2a">(E8M0: 0x84)</text>
+
+  <text x="190" y="385" font-size="20" fill="#1e1e1e">+</text>
+
+  <!-- E4M3 elements -->
+  <rect x="215" y="350" width="40" height="52" fill="#a5d8ff" stroke="#74c0fc" stroke-width="1" rx="3"/>
+  <text x="235" y="370" text-anchor="middle" font-size="11" fill="#1e1e1e">e₀</text>
+  <text x="235" y="385" text-anchor="middle" font-size="10" fill="#495057">E4M3</text>
+
+  <rect x="260" y="350" width="40" height="52" fill="#a5d8ff" stroke="#74c0fc" stroke-width="1" rx="3"/>
+  <text x="280" y="370" text-anchor="middle" font-size="11" fill="#1e1e1e">e₁</text>
+  <text x="280" y="385" text-anchor="middle" font-size="10" fill="#495057">E4M3</text>
+
+  <text x="310" y="385" font-size="16" fill="#868e96">...</text>
+
+  <rect x="335" y="350" width="40" height="52" fill="#a5d8ff" stroke="#74c0fc" stroke-width="1" rx="3"/>
+  <text x="355" y="370" text-anchor="middle" font-size="11" fill="#1e1e1e">e₃₁</text>
+  <text x="355" y="385" text-anchor="middle" font-size="10" fill="#495057">E4M3</text>
+
+  <text x="420" y="370" font-size="14" fill="#2b8a3e">32 × 8b + 8b = 264 bits</text>
+  <text x="420" y="390" font-size="14" fill="#2b8a3e">= 8.25 bits/element</text>
+
+  <!-- Arrow down -->
+  <line x1="320" y1="406" x2="320" y2="445" stroke="#868e96" stroke-width="2" marker-end="url(#arrowGray)"/>
+  <text x="340" y="430" font-size="13" fill="#868e96">Dequantize: x̂ᵢ = xᵢ(E4M3) × 2^scale</text>
+
+  <!-- Step 4: Recovered Values -->
+  <text x="60" y="480" font-size="15" font-weight="600" fill="#1e1e1e">④ Recovered Values (BF16/FP32)</text>
+  <rect x="60" y="495" width="520" height="42" fill="#b2f2bb" stroke="#69db7c" stroke-width="2" rx="4"/>
+  <text x="320" y="521" text-anchor="middle" font-size="14" fill="#2b8a3e">Full FP32-like dynamic range, 6% E4M3 precision per element</text>
+
+  <!-- Key Insight -->
+  <rect x="60" y="570" width="600" height="70" fill="#fff3bf" stroke="#fcc419" stroke-width="1.5" rx="6"/>
+  <text x="80" y="595" font-size="14" font-weight="600" fill="#1e1e1e">💡 Key Insight</text>
+  <text x="80" y="615" font-size="13" fill="#495057">Adjacent elements along the K dimension have correlated magnitudes — one shared</text>
+  <text x="80" y="632" font-size="13" fill="#495057">scale covers 32 elements with minimal precision loss (only 3% storage overhead).</text>
+
+  <!-- Outlier example -->
+  <rect x="60" y="670" width="600" height="75" fill="#f8f9fa" stroke="#dee2e6" stroke-width="1.5" rx="6"/>
+  <text x="80" y="695" font-size="13" font-weight="600" fill="#1e1e1e">Outlier Localization</text>
+  <text x="80" y="715" font-size="12" fill="#495057">Per-tensor scale: one outlier at 5000 → all elements lose precision</text>
+  <text x="80" y="732" font-size="12" fill="#495057">MXFP8 block scale: outlier damages only 31 neighbors, rest of tensor unaffected</text>
+
+  <defs>
+    <marker id="arrowGray" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#868e96"/>
+    </marker>
+  </defs>
+</svg>
