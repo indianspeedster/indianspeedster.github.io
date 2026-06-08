@@ -1,6 +1,6 @@
 ---
 title: "MXFP8: Microscale Floating Point 8 — How Block-Level Scaling Makes 8-Bit Training Work"
-description: "A from-first-principles look at the MXFP8 datatype: why regular FP8 isn't enough, how per-block scaling stretches 8-bit dynamic range by 2.5×, the hardware plumbing on CDNA4 and Hopper, and real training throughput numbers."
+description: "A from-first-principles look at the MXFP8 datatype: why regular FP8 isn't enough, how per-block scaling stretches 8-bit dynamic range by 2.5×, the hardware plumbing on CDNA4 and Hopper, and the block-size theory behind the design."
 date: 2026-06-08
 tags: ["GPU", "AMD", "FP8", "MXFP8", "quantization", "LLM", "CDNA4"]
 draft: false
@@ -10,9 +10,9 @@ Training LLMs in floating point 8 has an obvious appeal: cut activations in half
 
 **MXFP8 solves this by adding a shared scale per block.** Instead of each 8-bit element standing on its own, 32 elements share a single 8-bit power-of-two scale. The per-element values stay in FP8 E4M3, and the scale multiplies the whole block. Net effect: the dynamic range of a 16-bit float, delivered by 8-bit storage.
 
-This post unpacks MXFP8 from silicon to software — the bit layout, the math, how it maps to GPU matrix cores, and measured training throughput on AMD MI355X (CDNA4). Diagrams are in Excalidraw (editable).
+This post unpacks MXFP8 from silicon to software — the bit layout, the math, how it maps to GPU matrix cores on AMD MI355X (CDNA4) and NVIDIA Hopper, and the block-size theory behind the design. Diagrams are in Excalidraw (editable).
 
-> **TL;DR.** MXFP8 packs 8-bit elements into blocks of 32 with one shared E8M0 scale per block. Storage is just 1.02 bytes/element (1 byte data + 0.02 byte scale overhead) vs 2 bytes for BF16. The block scale extends the effective dynamic range from [0.00195, 448] to ~[2^-134, 2^127] — roughly the range of FP32. On CDNA4, MFMA instructions natively consume MXFP8 blocks, feeding the matrix core at double the rate of FP16 while keeping output precision at BF16 or FP32. In DeepSeek-V3-16B training on MI355X, MXFP8 delivers 1.7–2.1× training throughput over BF16 at iso-loss convergence.
+> **TL;DR.** MXFP8 packs 8-bit elements into blocks of 32 with one shared E8M0 scale per block. Storage is just 1.02 bytes/element (1 byte data + 0.02 byte scale overhead) vs 2 bytes for BF16. The block scale extends the effective dynamic range from [0.00195, 448] to ~[2⁻¹³⁴, 2¹²⁷] — roughly the range of FP32. On CDNA4, MFMA instructions natively consume MXFP8 blocks, feeding the matrix core at double the rate of FP16 while keeping output precision at BF16 or FP32. It's a ~2× memory and compute win for transformer training and inference.
 
 ---
 
@@ -150,39 +150,7 @@ MXFP8 doubles BF16 compute throughput — exactly what you'd expect from packing
 
 ---
 
-## Part 4 — Performance: Training Throughput
-
-### DeepSeek-V3-16B on MI355X
-
-I profiled DeepSeek-V3-16B training with two configurations — BF16 and full MXFP8 — on an 8×MI355X (gfx950, ROCm 7.1) node. Training config: 5 steps, global batch 16, sequence length 4096.
-
-| Metric | BF16 | MXFP8 | Speedup |
-|--------|------|-------|---------|
-| Step time (s) | 12.4 | 6.8 | 1.82× |
-| Tokens/sec/GPU | 5,280 | 9,610 | 1.82× |
-| Memory (GB/GPU) | 62.3 | 41.7 | 33% less |
-| MFU (est.) | 48% | 52% | — |
-
-**Where the speedup comes from:** ~40% from halved memory traffic (activations in forward pass, gradients in backward), ~60% from doubled matrix core throughput on the large GEMMs (QKV projections, MLP up/down, attention scores). The 33% memory savings let you increase batch size by 1.5× — a compounding gain for throughput.
-
-### Loss convergence
-
-The concern with any reduced-precision format is whether the model actually learns. On this 16B configuration, MXFP8 tracks BF16 loss within 0.2% through 1,000 steps — the per-block scaling is fine enough that quantization noise doesn't accumulate. Larger models (70B+) see even tighter convergence because their wider distributions further smooth out per-block quantization error.
-
-### Comparison with per-tensor FP8
-
-| Method | Dynamic range | Quant error source | Storage (bytes/elem) |
-|--------|--------------|-------------------|---------------------|
-| BF16 (baseline) | [5.9e-8, 3.4e38] | — | 2.0 |
-| Per-tensor FP8 | Per-tensor scale | 1 outlier → all elements | 1.0 + overhead |
-| Per-token FP8 | Per-row scale | 1 outlier → whole row | 1.0 + overhead |
-| **MXFP8 (block=32)** | Per-32-elem scale | 1 outlier → 31 neighbors | **1.03** |
-
-MXFP8 localizes outlier damage: a single outlier element in a row only distorts its 31-block-neighbors, not the entire row or tensor. This granularity is what makes it viable for training.
-
----
-
-## Part 5 — The Math: Why Block Size 32?
+## Part 4 — The Math: Why Block Size 32?
 
 The block size is a choice, and 32 isn't arbitrary. Let's work through the tradeoff.
 
@@ -206,7 +174,7 @@ The sweet spot: B=32 makes the storage overhead just 3% while keeping scale gran
 
 ---
 
-## Part 6 — MXFP6 and MXFP4: The Road Ahead
+## Part 5 — MXFP6 and MXFP4: The Road Ahead
 
 The MX specification scales down further:
 
@@ -226,7 +194,7 @@ On CDNA4, MXFP6 and MXFP4 MFMA instructions exist in the ISA but the real-world 
 
 ## Wrapping Up
 
-MXFP8 hits a Goldilocks point: nearly the storage of FP8, nearly the dynamic range of FP16, and per-block granularity that localizes outlier damage. On AMD MI355X, it gives a clean 1.8–2.1× training speedup over BF16 for MoE transformer architectures.
+MXFP8 hits a Goldilocks point: nearly the storage of FP8, nearly the dynamic range of FP16, and per-block granularity that localizes outlier damage. On AMD MI355X, it delivers a clean 2× theoretical throughput advantage over BF16 — double the matrix-core math and halved memory traffic per activation.
 
 The key insight: **sharing magnitude information across neighboring elements is nearly free in the common case, and enormous when one element would otherwise ruin a tensor's quantization**. That's the block-scaling bet, and it pays off.
 
