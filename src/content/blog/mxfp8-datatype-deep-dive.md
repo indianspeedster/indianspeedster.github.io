@@ -44,15 +44,15 @@ The insight behind MXFP8 is that these two jobs don't need the same density: **m
 
 ### The core idea
 
-Split a tensor into contiguous blocks of 32 elements (typically along the inner dimension). Each block gets one shared **scale factor** — an 8-bit power-of-two exponent (E8M0 format: × 2ⁿ, n ∈ [−127, 127]). The elements themselves stay in E4M3.
+Split a tensor into contiguous blocks of 32 elements (typically along the inner dimension). Each block gets one shared **scale factor** — an 8-bit power-of-two exponent (E8M0 format: × 2ⁿ, n ranges from −127 to 127). The elements themselves stay in E4M3.
 
 ![mxfp8_02_block_scaling.svg](/blog/mxfp8/mxfp8_02_block_scaling.svg)
 
 The dequantized value for element *i* in block *j* is:
 
-$$\hat{x}_i = x_i^{\text{FP8}} \times 2^{\text{scale}_j}$$
+> **x̂ᵢ = xᵢ(FP8) × 2^scaleⱼ**
 
-where $x_i^{\text{FP8}}$ is the stored 8-bit E4M3 value and $\text{scale}_j$ is the block's shared E8M0 exponent.
+where xᵢ(FP8) is the stored 8-bit E4M3 value and scaleⱼ is the block's shared E8M0 exponent.
 
 ### Storage cost
 
@@ -67,27 +67,27 @@ The 0.25-bit overhead (8 bits ÷ 32 elements) is why the block size is 32 and no
 
 ### Why E8M0 for the scale?
 
-The scale format is pure power-of-two: 8 bits of exponent, no sign, no mantissa. Values represent $2^n$ for n ∈ [−127, 127], so the smallest scale is $2^{-127} \approx 5.88 \times 10^{-39}$ and the largest is $2^{127} \approx 1.70 \times 10^{38}$.
+The scale format is pure power-of-two: 8 bits of exponent, no sign, no mantissa. Values represent 2ⁿ for n ∈ [−127, 127], so the smallest scale is 2⁻¹²⁷ ≈ 5.88 × 10⁻³⁹ and the largest is 2¹²⁷ ≈ 1.70 × 10³⁸.
 
 Multiply this with E4M3's native range of [0.00195, 448]:
 
 | Scale | Min effective value | Max effective value |
 |-------|-------------------|-------------------|
-| $2^{-127}$ | $1.1 \times 10^{-41}$ | $2.6 \times 10^{-36}$ |
-| $2^0$ | 0.00195 | 448 |
-| $2^{127}$ | $3.3 \times 10^{36}$ | $7.6 \times 10^{40}$ |
+| 2⁻¹²⁷ | 1.1 × 10⁻⁴¹ | 2.6 × 10⁻³⁶ |
+| 2⁰ | 0.00195 | 448 |
+| 2¹²⁷ | 3.3 × 10³⁶ | 7.6 × 10⁴⁰ |
 
-The effective dynamic range spans ~$10^{81}$ — far exceeding FP32's $10^{38}$ range. In practice, the per-block scale is chosen as the smallest power-of-two that keeps the block's maximum absolute value under 448, so the effective range is the *union* of the ranges in the table, dominated by whatever the data needs.
+The effective dynamic range spans ~10⁸¹ — far exceeding FP32's 10³⁸ range. In practice, the per-block scale is chosen as the smallest power-of-two that keeps the block's maximum absolute value under 448, so the effective range is the *union* of the ranges in the table, dominated by whatever the data needs.
 
 ![mxfp8_03_dynamic_range.svg](/blog/mxfp8/mxfp8_03_dynamic_range.svg)
 
 ### The quantization algorithm
 
-For a block $b$ of 32 elements:
+For a block *b* of 32 elements:
 
-1. Find $m = \max(|b_0|, ..., |b_{31}|)$
-2. Compute scale: $\text{scale} = 2^{\lceil \log_2(m / 448) \rceil}$, clamped to $[-127, 127]$
-3. Quantize each element: $b_i^{\text{MXFP8}} = \text{quantize}_{\text{E4M3}}(b_i / \text{scale})$
+1. Find **m = max(|b₀|, ..., |b₃₁|)**
+2. Compute scale: **scale = 2^⌈log₂(m / 448)⌉**, clamped to [−127, 127]
+3. Quantize each element: **bᵢ(MXFP8) = quantize_E4M3(bᵢ / scale)**
 
 Step 2 ensures that after scaling, no element exceeds 448 (E4M3's max), and the scale is always a power-of-two (exact bit-shift on dequantize). Step 3 is a standard E4M3 quantization — round to nearest representable FP8.
 
@@ -188,21 +188,21 @@ The block size is a choice, and 32 isn't arbitrary. Let's work through the trade
 
 ### Quantization error model
 
-For a block of $B$ elements, the quantization noise per element has two components:
-1. **Scale granularity error** ($\epsilon_s$): How well the shared scale captures the block's true maximum. Decreases with smaller $B$.
-2. **Element quantization error** ($\epsilon_q$): E4M3 rounding noise. Independent of $B$.
+For a block of **B** elements, the quantization noise per element has two components:
+1. **Scale granularity error (εₛ):** How well the shared scale captures the block's true maximum. Decreases with smaller B.
+2. **Element quantization error (ε_q):** E4M3 rounding noise. Independent of B.
 
-Total: $\epsilon_{\text{total}} = \sqrt{\epsilon_s^2 + \epsilon_q^2}$
+Total: **ε_total = √(εₛ² + ε_q²)**
 
-For E4M3, $\epsilon_q \approx 2^{-4} = 6.25\%$ relative error (standard rounding, uniform distribution assumption).
+For E4M3, ε_q ≈ 2⁻⁴ = 6.25% relative error (standard rounding, uniform distribution assumption).
 
-For a block of $B$ elements drawn from a normal distribution $\mathcal{N}(0, \sigma^2)$, the block maximum scales as $\sigma \sqrt{2\ln B}$. The scale set to cover this maximum wastes range for the average element:
+For a block of B elements drawn from a normal distribution N(0, σ²), the block maximum scales as σ·√(2·ln B). The scale set to cover this maximum wastes range for the average element:
 
-$$\epsilon_s(B) \approx \frac{\sqrt{2\ln B}}{\sqrt{2\ln 32}} - 1$$
+> **εₛ(B) ≈ √(2·ln B) / √(2·ln 32) − 1**
 
-At $B=32$, $\epsilon_s \approx 0$ (baseline). At $B=128$, $\epsilon_s \approx 15\%$. At $B=8$, $\epsilon_s \approx -8\%$ (slightly better than baseline, but storage overhead doubles to 12.5%).
+At B=32, εₛ ≈ 0 (baseline). At B=128, εₛ ≈ 15%. At B=8, εₛ ≈ −8% (slightly better than baseline, but storage overhead doubles to 12.5%).
 
-The sweet spot: $B=32$ makes the storage overhead just 3% while keeping scale granularity error near its minimum.
+The sweet spot: B=32 makes the storage overhead just 3% while keeping scale granularity error near its minimum.
 
 ---
 
