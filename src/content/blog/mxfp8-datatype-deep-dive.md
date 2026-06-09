@@ -10,6 +10,8 @@ Training LLMs in floating point 8 has an obvious appeal: cut activations in half
 
 **MXFP8 solves this by adding a shared scale per block.** Instead of each 8-bit element standing on its own, 32 elements share a single 8-bit power-of-two scale. The per-element values stay in FP8 E4M3, and the scale multiplies the whole block. Net effect: the dynamic range of a 16-bit float, delivered by 8-bit storage.
 
+> **In one sentence:** MXFP8 stores FP8 values in blocks of 32 elements, where each block shares a power-of-two scaling factor encoded as an 8-bit E8M0 exponent. Every stored element is an E4M3 FP8 number; the block scale multiplies the entire block to recover the original magnitude.
+
 This post unpacks MXFP8 from silicon to software — the bit layout, the math, how it maps to GPU matrix cores on AMD MI355X (CDNA4) and NVIDIA Hopper, and the block-size theory behind the design. Diagrams are in Excalidraw (editable).
 
 > **TL;DR.** MXFP8 packs 8-bit elements into blocks of 32 with one shared E8M0 scale per block. Storage is just 1.02 bytes/element (1 byte data + 0.02 byte scale overhead) vs 2 bytes for BF16. The block scale extends the effective dynamic range from [0.00195, 448] to ~[2⁻¹³⁴, 2¹²⁷] — roughly the range of FP32. On CDNA4, MFMA instructions natively consume MXFP8 blocks, feeding the matrix core at double the rate of FP16 while keeping output precision at BF16 or FP32. It's a ~2× memory and compute win for transformer training and inference.
@@ -56,18 +58,30 @@ where xᵢ(FP8) is the stored 8-bit E4M3 value and scaleⱼ is the block's share
 
 ### Storage cost
 
-A block of 32 elements costs:
-- 32 × 8 bits = 256 bits for the E4M3 data
-- 1 × 8 bits = 8 bits for the scale
-- Total: 264 bits for 32 values → **8.25 bits per element (1.03 bytes/element)**
+The math is stark — and it's the single fact that makes MXFP8 attractive:
 
-Compare: BF16 costs 16 bits per element (2 bytes). MXFP8 is a **1.94× storage reduction** with roughly the same dynamic range.
+- 32 × FP8 E4M3 values = 32 bytes
+- 1 × E8M0 scale = 1 byte
+- Total = **33 bytes** for 32 elements
 
-The 0.25-bit overhead (8 bits ÷ 32 elements) is why the block size is 32 and not, say, 8. At block size 8, overhead jumps to 1 bit/element (9 bits total, 1.125 bytes) — a 9% efficiency loss. At block size 64, overhead falls to 0.125 bit/element, but the scale becomes too coarse: a single scale covering 64 elements can't track rapid magnitude changes within a row.
+Compare: raw FP8 (no scaling) would be 32 bytes for the same 32 elements, and BF16 would be 64 bytes. The scale overhead is just 1 extra byte per 32 elements — a **3.125% storage overhead** over raw FP8, or an effective 8.25 bits per element (1.03 bytes/element).
+
+In relative terms:
+- Raw FP8 E4M3: 1.0 bytes/element (baseline)
+- MXFP8: 1.03 bytes/element (3.1% overhead)
+- BF16: 2.0 bytes/element (1.94× larger than MXFP8)
+
+The overhead is why the block size is 32 — at block size 8, overhead jumps to 12.5%; at block size 128, it shrinks to 0.8% but the scale becomes too coarse to track rapid magnitude changes within a row.
 
 ### Why E8M0 for the scale?
 
-The scale format is pure power-of-two: 8 bits of exponent, no sign, no mantissa. Values represent 2ⁿ for n ∈ [−127, 127], so the smallest scale is 2⁻¹²⁷ ≈ 5.88 × 10⁻³⁹ and the largest is 2¹²⁷ ≈ 1.70 × 10³⁸.
+Most people's first question: *why not just use FP16 or FP32 for the scale?* The answer is threefold:
+
+1. **Power-of-two is free at dequant.** An E8M0 scale represents 2ⁿ for n ∈ [−127, 127]. Multiplying an E4M3 value by 2ⁿ is a single integer exponent addition — no floating-point multiply needed. Hardware loves this.
+2. **One byte per block.** An FP16 scale would cost 2 bytes (6.25% overhead), and FP32 would cost 4 bytes (12.5% overhead). E8M0 keeps it to 1 byte — critical for staying under 2% effective overhead.
+3. **No sign, no mantissa.** The scale has no sign bit (values are always positive) and no mantissa (only exact powers of two). Every bit goes into the exponent, maximizing the dynamic range per byte of scale storage.
+
+Values represent 2ⁿ for n ∈ [−127, 127], so the smallest scale is 2⁻¹²⁷ ≈ 5.88 × 10⁻³⁹ and the largest is 2¹²⁷ ≈ 1.70 × 10³⁸.
 
 Multiply this with E4M3's native range of [0.00195, 448]:
 
@@ -92,6 +106,33 @@ For a block *b* of 32 elements:
 Step 2 ensures that after scaling, no element exceeds 448 (E4M3's max), and the scale is always a power-of-two (exact bit-shift on dequantize). Step 3 is a standard E4M3 quantization — round to nearest representable FP8.
 
 The magic: elements within the same block that are at vastly different magnitudes (say, one at 0.1 and another at 200) share the *same* scale. The small element's precision is unchanged; the large element benefits from the scale stretching the representable range upward. This works because within a 32-element neighborhood in a transformer activation matrix, magnitudes are *locally correlated* — adjacent tokens or channels tend to have similar scale.
+
+### A worked numerical example
+
+Here's the quantization process on an actual block (simplified to 8 elements for readability, but the same logic scales to 32):
+
+**Original block (FP32):** `[0.1, 0.25, 0.5, 1.2, 3.8, 12.0, 45.0, 150.0]`
+
+**Step 1 — Find the absolute maximum:** `m = max(|0.1|, ..., |150.0|) = 150.0`
+
+**Step 2 — Compute the shared scale.** The scale must bring 150.0 down to ≤ 448 (E4M3's max). Since 150 < 448 already, the scale is 2⁰ = 1.0. If the maximum were, say, 3600, the scale would be 2^⌈log₂(3600/448)⌉ = 2³ = 8.0.
+
+**Step 3 — Quantize each element.** Divide by the scale, then round to the nearest E4M3 representable value:
+
+| Original | ÷ scale (1.0) | E4M3 quantized | Dequantized | Error |
+|----------|--------------|----------------|-------------|-------|
+| 0.10 | 0.10 | 0.1016 | 0.1016 | +1.6% |
+| 0.25 | 0.25 | 0.2500 | 0.2500 | 0.0% |
+| 0.50 | 0.50 | 0.5000 | 0.5000 | 0.0% |
+| 1.20 | 1.20 | 1.1875 | 1.1875 | −1.0% |
+| 3.80 | 3.80 | 3.7500 | 3.7500 | −1.3% |
+| 12.00 | 12.00 | 12.000 | 12.000 | 0.0% |
+| 45.00 | 45.00 | 44.000 | 44.000 | −2.2% |
+| 150.00 | 150.00 | 144.000 | 144.000 | −4.0% |
+
+**Key observation:** The small values (0.1, 0.25) preserve their E4M3 precision perfectly — the scale isn't dominated by the large outlier at 150. The worst error is 4% at the largest element, well within E4M3's typical quantization bound. This is the localization property: 150's magnitude doesn't crush 0.1's precision because they share a scale that properly covers both.
+
+> 💡 If this were per-tensor scaling, the maximum across the *entire tensor* might be 5000, forcing scale = 2⁴ = 16. Every element would be divided by 16, making 0.1 → 0.00625 — below E4M3's minimum normal (0.00195) and losing several bits of precision. Block scaling prevents this.
 
 ---
 
@@ -148,6 +189,21 @@ On MI355X at 2.4 GHz, peak MXFP8 throughput per CU:
 
 MXFP8 doubles BF16 compute throughput — exactly what you'd expect from packing twice as many elements per byte. In practice, bandwidth-limited kernels (GEMMs with small M or large N) see less than 2× because the memory traffic reduction is the primary gain, not the math throughput.
 
+### Where MXFP8 fits in the quantization landscape
+
+It helps to place MXFP8 alongside the other reduced-precision formats you'll encounter:
+
+| Format | Scale granularity | Scale type | Block size | Bytes/elem |
+|--------|------------------|------------|------------|------------|
+| FP8 E4M3 (per-tensor) | Tensor | FP32 | Entire tensor | 1.0 |
+| Block FP8 | Block | FP32 | 128 | 1.03 |
+| **MXFP8 (OCP)** | Block | E8M0 | 32 | 1.03 |
+| MXFP6 (OCP) | Block | E8M0 | 32 | 0.81 |
+| MXFP4 (OCP) | Block | E8M0 | 32 | 0.56 |
+| BF16 | None | — | 1 | 2.0 |
+
+**The key differentiator:** MXFP8 uses E8M0 (power-of-two) scales on 32-element blocks. Block FP8 uses FP32 scales on 128-element blocks — 4× coarser granularity and 4× more scale storage. Per-tensor FP8 is the crudest: one scale for the entire tensor, vulnerable to the single-outlier problem.
+
 ---
 
 ## Part 4 — The Math: Why Block Size 32?
@@ -192,11 +248,41 @@ On CDNA4, MXFP6 and MXFP4 MFMA instructions exist in the ISA but the real-world 
 
 ---
 
-## Wrapping Up
+## Why MI355X Kernel Engineers Should Care
 
-MXFP8 hits a Goldilocks point: nearly the storage of FP8, nearly the dynamic range of FP16, and per-block granularity that localizes outlier damage. On AMD MI355X, it delivers a clean 2× theoretical throughput advantage over BF16 — double the matrix-core math and halved memory traffic per activation.
+If you write GEMM kernels for CDNA4 — especially grouped GEMMs for MoE — MXFP8 is becoming unavoidable. Here's what changes in your kernel:
 
-The key insight: **sharing magnitude information across neighboring elements is nearly free in the common case, and enormous when one element would otherwise ruin a tensor's quantization**. That's the block-scaling bet, and it pays off.
+### 1. MXFP8 is becoming the common currency
+
+Models quantized to MXFP8 show up everywhere: vLLM and SGLang inference, torchao training, and Primus-Turbo pre-training. If your kernel doesn't consume MXFP8 blocks, you're leaving 2× throughput on the table.
+
+### 2. Scale movement is a first-order performance concern
+
+A grouped GEMM with 64 experts, each processing a different token batch, must move not just the FP8 data but also the per-block E8M0 scales from HBM into registers. At 3% overhead per matrix, this sounds trivial — but in a fused MoE kernel where the scale feeds the MFMA instruction as an operand, scale layout in memory determines whether you get coalesced loads or scattered 1-byte reads. Get this wrong and the scale-load latency dominates the kernel.
+
+### 3. Scale layout is table stakes for GEMM kernel design
+
+On CDNA4, the MFMA MXFP8 instructions expect scales interleaved with the data in a specific block-major layout. The hardware loads the 32-element FP8 block and its 1-byte E8M0 scale together — but only if the memory layout matches. A kernel that naive-interprets MXFP8 data as plain FP8 will compute garbage (the scale byte lands in the data stream).
+
+### 4. The register budget shifts
+
+When you switch from BF16 to MXFP8, your operand size halves — but you now need a register to hold the combined A-scale × B-scale product per output tile. This is a small constant overhead (one extra register per tile), but it shifts the VGPR budget slightly. For tiles at the edge of occupancy limits (e.g., 256 VGPRs/wave), this one register can tip you into a lower occupancy tier.
+
+> **Bottom line for kernel authors:** MXFP8 isn't just "FP8 with extra bytes." The scales are first-class operands that affect memory layout, load patterns, and register allocation. Factor them into your kernel design from day one.
+
+---
+
+## The Mental Model
+
+Here's the intuition to carry with you:
+
+> FP8 gives every value its own exponent.
+> Block Floating Point gives every block one exponent.
+> **MXFP8 sits in the middle: every value has a local FP8 exponent, while every block gets an additional shared E8M0 scale.**
+
+The per-element E4M3 exponent handles fine-grained magnitude variation within the block. The shared E8M0 scale shifts the entire block's representable range up or down by powers of two. Together they cover the full FP32 range, at 8-bit storage density, with outlier damage confined to 31-element neighborhoods.
+
+That's the block-scaling bet, and it pays off.
 
 ---
 
