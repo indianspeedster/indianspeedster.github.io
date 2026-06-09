@@ -12,6 +12,8 @@ Training LLMs in floating point 8 has an obvious appeal: cut activations in half
 
 > **In one sentence:** MXFP8 stores FP8 values in blocks of 32 elements, where each block shares a power-of-two scaling factor encoded as an 8-bit E8M0 exponent. Every stored element is an E4M3 FP8 number; the block scale multiplies the entire block to recover the original magnitude.
 
+> **Why 32?** At block size 16, the scale overhead doubles to 6.25% — too much bloat. At 64, the scale gets too coarse: a single exponent stretched across 64 elements can't track rapid magnitude changes, and precision degrades. 32 is the Pareto-optimal point: 3.1% storage overhead vs raw FP8, with per-block granularity fine enough that outlier damage is contained. (Part 4 has the math.)
+
 This post unpacks MXFP8 from silicon to software — the bit layout, the math, how it maps to GPU matrix cores on AMD MI355X (CDNA4) and NVIDIA Hopper, and the block-size theory behind the design. Diagrams are in Excalidraw (editable).
 
 > **TL;DR.** MXFP8 packs 8-bit elements into blocks of 32 with one shared E8M0 scale per block. Storage is just 1.02 bytes/element (1 byte data + 0.02 byte scale overhead) vs 2 bytes for BF16. The block scale extends the effective dynamic range from [0.00195, 448] to ~[2⁻¹³⁴, 2¹²⁷] — roughly the range of FP32. On CDNA4, MFMA instructions natively consume MXFP8 blocks, feeding the matrix core at double the rate of FP16 while keeping output precision at BF16 or FP32. It's a ~2× memory and compute win for transformer training and inference.
