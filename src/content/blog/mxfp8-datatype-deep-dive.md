@@ -204,6 +204,8 @@ It helps to place MXFP8 alongside the other reduced-precision formats you'll enc
 
 **The key differentiator:** MXFP8 uses E8M0 (power-of-two) scales on 32-element blocks. Block FP8 uses FP32 scales on 128-element blocks — 4× coarser granularity and 4× more scale storage. Per-tensor FP8 is the crudest: one scale for the entire tensor, vulnerable to the single-outlier problem.
 
+![mxfp8_05_scale_locality.svg](/blog/mxfp8/mxfp8_05_scale_locality.svg)
+
 ---
 
 ## Part 4 — The Math: Why Block Size 32?

@@ -1,0 +1,166 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 620" width="1000" height="620" font-family="system-ui, -apple-system, sans-serif">
+  <text x="500" y="30" text-anchor="middle" font-size="22" font-weight="600" fill="#1e1e1e">Scale Locality: Per-Tensor vs Per-Token vs MXFP8 Block Scaling</text>
+
+  <!-- ===== PER-TENSOR ===== -->
+  <text x="160" y="75" text-anchor="middle" font-size="16" font-weight="600" fill="#c92a2a">Per-Tensor FP8</text>
+  <text x="160" y="95" text-anchor="middle" font-size="12" fill="#868e96">One scale for entire tensor</text>
+
+  <!-- Tensor representation -->
+  <rect x="30" y="110" width="260" height="80" fill="#f8f9fa" stroke="#adb5bd" stroke-width="1.5" rx="4"/>
+  
+  <!-- Outlier element highlighted -->
+  <rect x="40" y="118" width="54" height="22" fill="#e9ecef" stroke="#adb5bd" rx="2"/>
+  <text x="67" y="133" text-anchor="middle" font-size="10" fill="#495057">3.2</text>
+  <rect x="98" y="118" width="54" height="22" fill="#e9ecef" stroke="#adb5bd" rx="2"/>
+  <text x="125" y="133" text-anchor="middle" font-size="10" fill="#495057">2.8</text>
+  <rect x="156" y="118" width="54" height="22" fill="#ffc9c9" stroke="#ff8787" stroke-width="2" rx="2"/>
+  <text x="183" y="133" text-anchor="middle" font-size="10" fill="#c92a2a" font-weight="700">5120!</text>
+  <rect x="214" y="118" width="54" height="22" fill="#e9ecef" stroke="#adb5bd" rx="2"/>
+  <text x="241" y="133" text-anchor="middle" font-size="10" fill="#495057">4.1</text>
+
+  <rect x="40" y="145" width="54" height="22" fill="#e9ecef" stroke="#adb5bd" rx="2"/>
+  <text x="67" y="160" text-anchor="middle" font-size="10" fill="#495057">0.5</text>
+  <rect x="98" y="145" width="54" height="22" fill="#e9ecef" stroke="#adb5bd" rx="2"/>
+  <text x="125" y="160" text-anchor="middle" font-size="10" fill="#495057">1.1</text>
+  <rect x="156" y="145" width="54" height="22" fill="#e9ecef" stroke="#adb5bd" rx="2"/>
+  <text x="183" y="160" text-anchor="middle" font-size="10" fill="#495057">7.3</text>
+  <rect x="214" y="145" width="54" height="22" fill="#e9ecef" stroke="#adb5bd" rx="2"/>
+  <text x="241" y="160" text-anchor="middle" font-size="10" fill="#495057">0.9</text>
+
+  <!-- Damage zone: entire tensor -->
+  <rect x="30" y="205" width="260" height="28" fill="#ffc9c9" stroke="#ff8787" stroke-width="1.5" rx="4"/>
+  <text x="160" y="224" text-anchor="middle" font-size="12" fill="#c92a2a">One outlier → one scale → all elements lose precision</text>
+
+  <!-- Arrow from tensor to damage -->
+  <line x1="160" y1="192" x2="160" y2="203" stroke="#c92a2a" stroke-width="1.5" marker-end="url(#arrowRed)"/>
+
+  <!-- Scale indicator -->
+  <rect x="80" y="255" width="160" height="22" fill="#e9ecef" stroke="#868e96" stroke-width="1" rx="3"/>
+  <text x="160" y="270" text-anchor="middle" font-size="11" fill="#868e96">scale₀ = FP32 (covers all elements)</text>
+
+  <!-- ===== PER-TOKEN ===== -->
+  <text x="500" y="75" text-anchor="middle" font-size="16" font-weight="600" fill="#e8590c">Per-Token FP8</text>
+  <text x="500" y="95" text-anchor="middle" font-size="12" fill="#868e96">One scale per row</text>
+
+  <rect x="360" y="110" width="280" height="80" fill="#f8f9fa" stroke="#adb5bd" stroke-width="1.5" rx="4"/>
+
+  <!-- Row 1 -->
+  <rect x="370" y="118" width="99" height="22" fill="#ffc9c9" stroke="#ff8787" stroke-width="2" rx="2"/>
+  <text x="420" y="133" text-anchor="middle" font-size="10" fill="#c92a2a">5120!</text>
+  <rect x="473" y="118" width="99" height="22" fill="#ffc9c9" stroke="#ff8787" rx="2"/>
+  <text x="522" y="133" text-anchor="middle" font-size="9" fill="#c92a2a">(damaged)</text>
+  <rect x="576" y="118" width="54" height="22" fill="#ffc9c9" stroke="#ff8787" rx="2"/>
+  <text x="603" y="133" text-anchor="middle" font-size="10" fill="#c92a2a">4.1</text>
+
+  <!-- Row 2 (healthy) -->
+  <rect x="370" y="145" width="99" height="22" fill="#b2f2bb" stroke="#69db7c" rx="2"/>
+  <text x="420" y="160" text-anchor="middle" font-size="10" fill="#2b8a3e">0.5 ✓</text>
+  <rect x="473" y="145" width="99" height="22" fill="#b2f2bb" stroke="#69db7c" rx="2"/>
+  <text x="522" y="160" text-anchor="middle" font-size="10" fill="#2b8a3e">1.1 ✓</text>
+  <rect x="576" y="145" width="54" height="22" fill="#b2f2bb" stroke="#69db7c" rx="2"/>
+  <text x="603" y="160" text-anchor="middle" font-size="10" fill="#2b8a3e">0.9 ✓</text>
+
+  <!-- Damage zone -->
+  <rect x="360" y="205" width="280" height="28" fill="#ffe8cc" stroke="#e8590c" stroke-width="1.5" rx="4"/>
+  <text x="500" y="224" text-anchor="middle" font-size="12" fill="#e8590c">One outlier → row's scale → that whole row suffers</text>
+
+  <line x1="500" y1="192" x2="500" y2="203" stroke="#e8590c" stroke-width="1.5" marker-end="url(#arrowOrange)"/>
+
+  <rect x="400" y="255" width="200" height="22" fill="#e9ecef" stroke="#868e96" stroke-width="1" rx="3"/>
+  <text x="500" y="270" text-anchor="middle" font-size="11" fill="#868e96">scale row N = FP32 (per row)</text>
+
+  <!-- ===== MXFP8 ===== -->
+  <text x="820" y="75" text-anchor="middle" font-size="16" font-weight="600" fill="#2b8a3e">MXFP8 Block Scaling</text>
+  <text x="820" y="95" text-anchor="middle" font-size="12" fill="#2b8a3e">One E8M0 scale per 32 elements</text>
+
+  <rect x="680" y="110" width="280" height="80" fill="#f8f9fa" stroke="#adb5bd" stroke-width="1.5" rx="4"/>
+
+  <!-- Block 0 (healthy) -->
+  <rect x="690" y="118" width="54" height="22" fill="#b2f2bb" stroke="#69db7c" rx="2"/>
+  <text x="717" y="133" text-anchor="middle" font-size="10" fill="#2b8a3e">3.2 ✓</text>
+  <rect x="748" y="118" width="54" height="22" fill="#b2f2bb" stroke="#69db7c" rx="2"/>
+  <text x="775" y="133" text-anchor="middle" font-size="10" fill="#2b8a3e">2.8 ✓</text>
+  <!-- Outlier block (damaged, but isolated) -->
+  <rect x="806" y="118" width="54" height="22" fill="#ffc9c9" stroke="#ff8787" stroke-width="2" rx="2"/>
+  <text x="833" y="133" text-anchor="middle" font-size="10" fill="#c92a2a">5120!</text>
+  <rect x="864" y="118" width="54" height="22" fill="#ffc9c9" stroke="#ff8787" rx="2"/>
+  <text x="891" y="133" text-anchor="middle" font-size="9" fill="#c92a2a">(⚠)</text>
+
+  <!-- Next block recovers -->
+  <rect x="690" y="145" width="54" height="22" fill="#b2f2bb" stroke="#69db7c" rx="2"/>
+  <text x="717" y="160" text-anchor="middle" font-size="10" fill="#2b8a3e">4.1 ✓</text>
+  <rect x="748" y="145" width="54" height="22" fill="#b2f2bb" stroke="#69db7c" rx="2"/>
+  <text x="775" y="160" text-anchor="middle" font-size="10" fill="#2b8a3e">0.5 ✓</text>
+  <rect x="806" y="145" width="54" height="22" fill="#b2f2bb" stroke="#69db7c" rx="2"/>
+  <text x="833" y="160" text-anchor="middle" font-size="10" fill="#2b8a3e">1.1 ✓</text>
+  <rect x="864" y="145" width="54" height="22" fill="#b2f2bb" stroke="#69db7c" rx="2"/>
+  <text x="891" y="160" text-anchor="middle" font-size="10" fill="#2b8a3e">0.9 ✓</text>
+
+  <!-- Damage zone: only the outlier's block -->
+  <rect x="720" y="205" width="200" height="28" fill="#b2f2bb" stroke="#40c057" stroke-width="1.5" rx="4"/>
+  <text x="820" y="224" text-anchor="middle" font-size="12" fill="#2b8a3e">Outlier → its block only → rest of tensor safe</text>
+
+  <line x1="820" y1="192" x2="820" y2="203" stroke="#40c057" stroke-width="1.5" marker-end="url(#arrowGreen)"/>
+
+  <!-- Scale indicators -->
+  <rect x="695" y="255" width="100" height="22" fill="#e9ecef" stroke="#868e96" stroke-width="1" rx="3"/>
+  <text x="745" y="270" text-anchor="middle" font-size="10" fill="#868e96">s₀=E8M0</text>
+  <rect x="800" y="255" width="100" height="22" fill="#ffc9c9" stroke="#ff8787" stroke-width="1" rx="3"/>
+  <text x="850" y="270" text-anchor="middle" font-size="10" fill="#c92a2a">s₁=E8M0 ⚠</text>
+  <rect x="905" y="255" width="42" height="22" fill="#e9ecef" stroke="#868e96" stroke-width="1" rx="3"/>
+  <text x="926" y="270" text-anchor="middle" font-size="10" fill="#868e96">s₂</text>
+
+  <!-- ===== SUMMARY SECTION ===== -->
+  <rect x="30" y="310" width="940" height="95" fill="#f8f9fa" stroke="#dee2e6" stroke-width="1.5" rx="8"/>
+
+  <text x="55" y="340" font-size="15" font-weight="600" fill="#1e1e1e">Outlier Damage Radius (one element at 5120 in a tensor of thousands)</text>
+
+  <!-- Per-tensor row -->
+  <text x="55" y="368" font-size="13" fill="#c92a2a">Per-tensor:</text>
+  <rect x="150" y="355" width="180" height="20" fill="#ffc9c9" stroke="#ff8787" stroke-width="1" rx="3"/>
+  <text x="240" y="369" text-anchor="middle" font-size="11" fill="#c92a2a">All elements (thousands)</text>
+  <text x="342" y="369" font-size="13" fill="#c92a2a">— catastrophic, tensor unusable</text>
+
+  <!-- Per-token row -->
+  <text x="55" y="395" font-size="13" fill="#e8590c">Per-token:</text>
+  <rect x="150" y="382" width="100" height="20" fill="#ffe8cc" stroke="#e8590c" stroke-width="1" rx="3"/>
+  <text x="200" y="396" text-anchor="middle" font-size="11" fill="#e8590c">Entire row (K elems)</text>
+  <text x="262" y="396" font-size="13" fill="#e8590c">— that row lost, others OK</text>
+
+  <!-- MXFP8 row -->
+  <text x="55" y="422" font-size="13" fill="#2b8a3e" font-weight="600">MXFP8:</text>
+  <rect x="150" y="409" width="72" height="20" fill="#b2f2bb" stroke="#40c057" stroke-width="1" rx="3"/>
+  <text x="186" y="423" text-anchor="middle" font-size="11" fill="#2b8a3e">31 elements</text>
+  <text x="234" y="423" font-size="13" fill="#2b8a3e">— outlier's block only, rest of tensor at full precision</text>
+
+  <!-- ===== VISUAL SUMMARY ===== -->
+  <text x="500" y="470" text-anchor="middle" font-size="17" font-weight="600" fill="#1e1e1e">The Spectrum of Scale Granularity</text>
+
+  <!-- Arrow-based spectrum -->
+  <line x1="80" y1="530" x2="920" y2="530" stroke="#adb5bd" stroke-width="2"/>
+  <circle cx="80" cy="530" r="6" fill="#c92a2a"/>
+  <circle cx="280" cy="530" r="6" fill="#e8590c"/>
+  <circle cx="500" cy="530" r="6" fill="#fcc419"/>
+  <circle cx="700" cy="530" r="6" fill="#40c057"/>
+  <circle cx="920" cy="530" r="6" fill="#1e1e1e"/>
+
+  <text x="80" y="555" text-anchor="middle" font-size="12" fill="#c92a2a">Per-tensor<br/>1 scale / tensor</text>
+  <text x="280" y="555" text-anchor="middle" font-size="12" fill="#e8590c">Per-token<br/>1 scale / row</text>
+  <text x="500" y="555" text-anchor="middle" font-size="12" fill="#fcc419">Block FP8<br/>1 scale / 128</text>
+  <text x="700" y="555" text-anchor="middle" font-size="13" fill="#2b8a3e" font-weight="600">MXFP8 ★<br/>1 scale / 32</text>
+  <text x="920" y="555" text-anchor="middle" font-size="12" fill="#495057">Per-element<br/>(FP32/BF16)</text>
+
+  <text x="500" y="595" text-anchor="middle" font-size="12" fill="#868e96">← coarser, cheaper, outliers hurt more ← → finer, more expensive, better precision →</text>
+
+  <defs>
+    <marker id="arrowRed" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#c92a2a"/>
+    </marker>
+    <marker id="arrowOrange" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#e8590c"/>
+    </marker>
+    <marker id="arrowGreen" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#40c057"/>
+    </marker>
+  </defs>
+</svg>
