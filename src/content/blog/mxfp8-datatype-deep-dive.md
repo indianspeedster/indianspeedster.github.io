@@ -14,7 +14,7 @@ Training LLMs in floating point 8 has an obvious appeal: cut activations in half
 
 > **Why 32?** At block size 16, the scale overhead doubles to 6.25% — too much bloat. At 64, the scale gets too coarse: a single exponent stretched across 64 elements can't track rapid magnitude changes, and precision degrades. 32 is the Pareto-optimal point: 3.1% storage overhead vs raw FP8, with per-block granularity fine enough that outlier damage is contained. (Part 4 has the math.)
 
-This post unpacks MXFP8 from silicon to software — the bit layout, the math, how it maps to GPU matrix cores on AMD MI355X (CDNA4) and NVIDIA Hopper, and the block-size theory behind the design. Diagrams are in Excalidraw (editable).
+I want to unpack MXFP8 from silicon to software — the bit layout, the math, how it maps to GPU matrix cores on AMD MI355X (CDNA4) and NVIDIA Hopper, and the block-size theory behind the design.
 
 > **TL;DR.** MXFP8 packs 8-bit elements into blocks of 32 with one shared E8M0 scale per block. Storage is just 1.02 bytes/element (1 byte data + 0.02 byte scale overhead) vs 2 bytes for BF16. The block scale extends the effective dynamic range from [0.00195, 448] to ~[2⁻¹³⁴, 2¹²⁷] — roughly the range of FP32. On CDNA4, MFMA instructions natively consume MXFP8 blocks, feeding the matrix core at double the rate of FP16 while keeping output precision at BF16 or FP32. It's a ~2× memory and compute win for transformer training and inference.
 
@@ -193,7 +193,7 @@ MXFP8 doubles BF16 compute throughput — exactly what you'd expect from packing
 
 ### Where MXFP8 fits in the quantization landscape
 
-It helps to place MXFP8 alongside the other reduced-precision formats you'll encounter:
+It helps to place MXFP8 alongside the other reduced-precision formats:
 
 | Format | Scale granularity | Scale type | Block size | Bytes/elem |
 |--------|------------------|------------|------------|------------|
@@ -252,29 +252,7 @@ On CDNA4, MXFP6 and MXFP4 MFMA instructions exist in the ISA but the real-world 
 
 ---
 
-## Why MI355X Kernel Engineers Should Care
 
-If you write GEMM kernels for CDNA4 — especially grouped GEMMs for MoE — MXFP8 is becoming unavoidable. Here's what changes in your kernel:
-
-### 1. MXFP8 is becoming the common currency
-
-Models quantized to MXFP8 show up everywhere: vLLM and SGLang inference, torchao training, and Primus-Turbo pre-training. If your kernel doesn't consume MXFP8 blocks, you're leaving 2× throughput on the table.
-
-### 2. Scale movement is a first-order performance concern
-
-A grouped GEMM with 64 experts, each processing a different token batch, must move not just the FP8 data but also the per-block E8M0 scales from HBM into registers. At 3% overhead per matrix, this sounds trivial — but in a fused MoE kernel where the scale feeds the MFMA instruction as an operand, scale layout in memory determines whether you get coalesced loads or scattered 1-byte reads. Get this wrong and the scale-load latency dominates the kernel.
-
-### 3. Scale layout is table stakes for GEMM kernel design
-
-On CDNA4, the MFMA MXFP8 instructions expect scales interleaved with the data in a specific block-major layout. The hardware loads the 32-element FP8 block and its 1-byte E8M0 scale together — but only if the memory layout matches. A kernel that naive-interprets MXFP8 data as plain FP8 will compute garbage (the scale byte lands in the data stream).
-
-### 4. The register budget shifts
-
-When you switch from BF16 to MXFP8, your operand size halves — but you now need a register to hold the combined A-scale × B-scale product per output tile. This is a small constant overhead (one extra register per tile), but it shifts the VGPR budget slightly. For tiles at the edge of occupancy limits (e.g., 256 VGPRs/wave), this one register can tip you into a lower occupancy tier.
-
-> **Bottom line for kernel authors:** MXFP8 isn't just "FP8 with extra bytes." The scales are first-class operands that affect memory layout, load patterns, and register allocation. Factor them into your kernel design from day one.
-
----
 
 ## The Mental Model
 
@@ -300,4 +278,4 @@ That's the block-scaling bet, and it pays off.
 
 ---
 
-*Feedback? Thoughts? Find me on [LinkedIn](https://www.linkedin.com/in/shekhar-p-aa90249a/) or [GitHub](https://github.com/indianspeedster). Editable Excalidraw versions of all diagrams are in the repo under `public/blog/mxfp8/` — open them on [excalidraw.com](https://excalidraw.com) and remix freely.*
+*Feedback? Thoughts? Find me on [LinkedIn](https://www.linkedin.com/in/shekhar-p-aa90249a/) or [GitHub](https://github.com/indianspeedster).*
