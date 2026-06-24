@@ -363,14 +363,14 @@ Everything that matters is in those two nested loops: `ILP` independent accumula
 
 Here is the full sweep — four ILP levels, each walked down in occupancy by reserving LDS:
 
-| ILP | occupancy range | throughput (PFLOP/s) | MfmaUtil |
-|----:|----------------:|---------------------:|---------:|
-| 8   | 49% → 12%       | **4.82–4.84** (flat) | ~97–98%  |
-| 4   | 96% → 12%       | 4.45–4.69            | 90–97%   |
-| 2   | 96% → 12%       | 4.62–4.67            | 95–96%   |
-| 1   | 59% → 12%       | 4.55 → **3.47**      | 95% → 70% |
+| ILP | occupancy span | throughput @ 12% occ | throughput @ max occ | MfmaUtil span |
+|----:|---------------:|---------------------:|---------------------:|--------------:|
+| 1   | 12–59%         | 3.47                 | 4.55                 | 70–95%        |
+| 2   | 12–96%         | 4.65                 | 4.67                 | 95–96%        |
+| 4   | 12–96%         | 4.46                 | 4.69                 | 90–96%        |
+| 8   | 12–49%         | **4.82**             | **4.83**             | ~97%          |
 
-The single most telling pair: **ILP=8 at 12% occupancy delivers 4.83 PFLOP/s — more than ILP=2 at 96% occupancy, which reaches only 4.67.** Same chip, same 512-VGPR file, two ways to spend it — on independent accumulator chains (ILP) or on more resident waves (occupancy). The low-occupancy, high-ILP route wins, at one-eighth the occupancy. Maximizing occupancy didn't just fail to help; the configurations that *can* reach near-full occupancy (ILP=2 and ILP=4) land *below* the low-occupancy ILP=8.
+The single most telling pair: **ILP=8 holds ~4.82 PFLOP/s down to 12% occupancy — more than ILP=2 manages even at 96% occupancy, where it reaches only 4.67.** Same chip, same 512-VGPR file, two ways to spend it — on independent accumulator chains (ILP) or on more resident waves (occupancy). The low-occupancy, high-ILP route wins, at one-eighth the occupancy. Maximizing occupancy didn't just fail to help; the configurations that *can* reach near-full occupancy (ILP=2 and ILP=4) land *below* the low-occupancy ILP=8.
 
 Start at the left edge — the lowest occupancy the LDS throttle reaches, ~12%, one workgroup (four waves, one per SIMD) resident per CU. There, ILP=8 already sits at about **4.84 PFLOP/s — ~97% of the MI355X's ~5 PFLOP/s MXFP8 matrix peak — and it stays flat all the way across the sweep, out to ~49% occupancy**: one well-fed wave per SIMD carries enough independent MFMAs to keep the matrix unit saturated, so the extra resident waves more occupancy would buy add nothing. (One honest caveat: that 4.84 is an *issue ceiling* — the microbench keeps its operands register-resident and moves no memory, so a real HBM-fed GEMM, which must also stream its inputs in, lands lower. What the sweep isolates is the matrix engine itself, and that is emphatically not the resource occupancy was supposed to be protecting.) The single dependent chain (ILP=1), by contrast, *starves* at that same ~12% floor — only ~3.47 PFLOP/s, because it exposes the matrix unit's latency and, with one wave per SIMD, has no neighbor to fill the gaps — and it climbs back only as more waves go resident to hide that latency through TLP.
 
