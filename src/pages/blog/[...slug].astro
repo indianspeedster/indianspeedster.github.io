@@ -18,10 +18,10 @@ const fmt = (d: Date) =>
 ---
 
 <Base title={`${post.data.title} · Shekhar Pandey`} description={post.data.description}>
-  <article class="article">
-    <a class="back-link" href="/blog">← all posts</a>
-    <h1 style="margin-top:18px">{post.data.title}</h1>
-    <div class="meta">
+  <article class="py-12">
+    <a class="text-[14px] text-gray-400 hover:text-blue-600 transition-colors" href="/blog">← all posts</a>
+    <h1 class="text-[32px] font-semibold text-black mt-4 mb-1 tracking-tight">{post.data.title}</h1>
+    <div class="text-[13px] text-gray-400 mb-8">
       {fmt(post.data.date)}
       {post.data.tags.length > 0 && <> · {post.data.tags.join(', ')}</>}
     </div>

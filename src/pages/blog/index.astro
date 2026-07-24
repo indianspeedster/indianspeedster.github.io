@@ -7,24 +7,37 @@ const posts = (await getCollection('blog'))
   .sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf());
 
 const fmt = (d: Date) =>
-  d.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+  d.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
 ---
 
-<Base title="Blog · Shekhar Pandey" description="Notes on ML systems, GPU kernels, and training.">
-  <section style="padding-top:48px">
-    <h2 class="section-title">writing</h2>
-    {posts.length === 0 ? (
-      <p class="about-text">No posts yet — check back soon.</p>
-    ) : (
-      <ul class="post-list">
-        {posts.map((post) => (
-          <li class="post-item">
-            <div class="post-date">{fmt(post.data.date)}</div>
-            <h3><a href={`/blog/${post.id}/`}>{post.data.title}</a></h3>
-            <p>{post.data.description}</p>
-          </li>
-        ))}
-      </ul>
-    )}
-  </section>
+<Base title="Blog · Shekhar Pandey" description="Writing on ML systems, GPU kernels, and LLMs.">
+  <div class="pt-16 pb-8">
+    <h1 class="text-[32px] font-semibold text-black tracking-tight">Blog</h1>
+    <p class="text-gray-500 text-[17px] mt-1">Writing on ML systems, GPU kernels, and LLMs.</p>
+  </div>
+
+  {posts.length === 0 ? (
+    <p class="text-gray-400">No posts yet.</p>
+  ) : (
+    <ul class="list-none p-0 m-0">
+      {posts.map((post) => (
+        <li class="py-5 border-b border-gray-100 last:border-b-0">
+          <div class="text-[12px] text-gray-400 mb-0.5">{fmt(post.data.date)}</div>
+          <h3 class="my-1 text-[20px] font-semibold">
+            <a href={`/blog/${post.id}/`} class="text-black hover:text-blue-600 transition-colors">{post.data.title}</a>
+          </h3>
+          <p class="text-[15px] text-gray-500 m-0">{post.data.description}</p>
+          {post.data.tags.length > 0 && (
+            <div class="flex flex-wrap gap-1.5 mt-2">
+              {post.data.tags.map((t: string) => <span class="text-[11px] text-blue-600 bg-blue-50 rounded-md px-2 py-0.5">{t}</span>)}
+            </div>
+          )}
+        </li>
+      ))}
+    </ul>
+  )}
+
+  <p class="mt-6 pb-10">
+    <a href="/" class="text-gray-400 hover:text-blue-600 transition-colors text-[14px]">← home</a>
+  </p>
 </Base>

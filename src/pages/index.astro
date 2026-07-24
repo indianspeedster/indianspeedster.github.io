@@ -14,78 +14,82 @@ const fmt = (d: Date) =>
 
 <Base>
   <!-- Hero -->
-  <header class="hero" id="about">
-    {profile.photo && <img class="hero-photo" src={profile.photo} alt={profile.name} />}
+  <header class="pt-16 pb-9 flex gap-8 items-center" id="about">
+    {profile.photo && <img class="w-[132px] h-[132px] rounded-2xl object-cover border border-gray-200 shrink-0" src={profile.photo} alt={profile.name} />}
     <div>
-      <h1>{profile.name}</h1>
-      <p class="tagline">{profile.tagline}</p>
-      <div class="socials">
-        {socials.map((s) => <a href={s.href} target="_blank" rel="noopener">{s.label}</a>)}
-        {profile.resume && <a href={profile.resume} target="_blank" rel="noopener">Resume</a>}
-        {profile.email && <a href={`mailto:${profile.email}`}>Email</a>}
+      <h1 class="text-[38px] font-semibold text-black m-0 mb-1.5 tracking-tight">{profile.name}</h1>
+      <p class="text-[15px] text-blue-600 m-0 mb-3.5">
+        <span class="text-gray-400">> </span>{profile.tagline}
+      </p>
+      <div class="flex gap-2.5 flex-wrap text-[13px]">
+        {socials.map((s) => <a href={s.href} target="_blank" rel="noopener" class="border border-gray-200 rounded-full px-3 py-1 text-gray-500 hover:border-blue-400 hover:text-blue-600 hover:bg-blue-50 transition-colors">{s.label}</a>)}
+        {profile.resume && <a href={profile.resume} target="_blank" rel="noopener" class="border border-gray-200 rounded-full px-3 py-1 text-gray-500 hover:border-blue-400 hover:text-blue-600 hover:bg-blue-50 transition-colors">Resume</a>}
+        {profile.email && <a href={`mailto:${profile.email}`} class="border border-gray-200 rounded-full px-3 py-1 text-gray-500 hover:border-blue-400 hover:text-blue-600 hover:bg-blue-50 transition-colors">Email</a>}
       </div>
     </div>
   </header>
 
   <!-- About -->
-  <section>
-    <h2 class="section-title">about</h2>
-    <p class="about-text">{profile.about}</p>
+  <section class="py-7">
+    <h2 class="text-[13px] uppercase tracking-[0.18em] text-gray-400 mb-5 flex items-center gap-3 after:content-[''] after:flex-1 after:h-px after:bg-gray-200">about</h2>
+    <p class="text-gray-500 text-[17px]">{profile.about}</p>
   </section>
 
   <!-- Experience -->
-  <section id="work">
-    <h2 class="section-title">experience</h2>
-    <div class="timeline">
+  <section id="work" class="py-7">
+    <h2 class="text-[13px] uppercase tracking-[0.18em] text-gray-400 mb-5 flex items-center gap-3 after:content-[''] after:flex-1 after:h-px after:bg-gray-200">experience</h2>
+    <div class="relative border-l border-gray-200 ml-1.5">
       {work.map((e) => (
-        <div class="tl-item">
-          <div class="tl-period">{e.period}</div>
+        <div class="relative pb-6 pl-6 before:content-[''] before:absolute before:left-[-5px] before:top-1.5 before:w-[9px] before:h-[9px] before:rounded-full before:bg-blue-500 before:shadow-[0_0_0_4px_white]">
+          <div class="text-[12px] text-gray-400 mb-0.5">{e.period}</div>
           <div>
-            <span class="tl-role">{e.role}</span>
-            {' · '}
+            <span class="font-semibold text-gray-900">{e.role}</span>
+            <span class="text-gray-400"> · </span>
             {e.orgUrl ? (
-              <a class="tl-org" href={e.orgUrl} target="_blank" rel="noopener">{e.org}</a>
+              <a class="text-blue-600" href={e.orgUrl} target="_blank" rel="noopener">{e.org}</a>
             ) : (
-              <span class="tl-org">{e.org}</span>
+              <span class="text-blue-600">{e.org}</span>
             )}
           </div>
-          <p class="tl-blurb">{e.blurb}</p>
+          <p class="text-[15px] text-gray-500 mt-1.5">{e.blurb}</p>
         </div>
       ))}
     </div>
   </section>
 
   <!-- Education -->
-  <section id="education">
-    <h2 class="section-title">education</h2>
-    <div class="timeline">
+  <section id="education" class="py-7">
+    <h2 class="text-[13px] uppercase tracking-[0.18em] text-gray-400 mb-5 flex items-center gap-3 after:content-[''] after:flex-1 after:h-px after:bg-gray-200">education</h2>
+    <div class="relative border-l border-gray-200 ml-1.5">
       {education.map((e) => (
-        <div class="tl-item">
-          <div class="tl-period">{e.period}</div>
+        <div class="relative pb-6 pl-6 before:content-[''] before:absolute before:left-[-5px] before:top-1.5 before:w-[9px] before:h-[9px] before:rounded-full before:bg-blue-500 before:shadow-[0_0_0_4px_white]">
+          <div class="text-[12px] text-gray-400 mb-0.5">{e.period}</div>
           <div>
-            <span class="tl-role">{e.role}</span>
-            {' · '}
+            <span class="font-semibold text-gray-900">{e.role}</span>
+            <span class="text-gray-400"> · </span>
             {e.orgUrl ? (
-              <a class="tl-org" href={e.orgUrl} target="_blank" rel="noopener">{e.org}</a>
+              <a class="text-blue-600" href={e.orgUrl} target="_blank" rel="noopener">{e.org}</a>
             ) : (
-              <span class="tl-org">{e.org}</span>
+              <span class="text-blue-600">{e.org}</span>
             )}
           </div>
-          <p class="tl-blurb">{e.blurb}</p>
+          <p class="text-[15px] text-gray-500 mt-1.5">{e.blurb}</p>
         </div>
       ))}
     </div>
   </section>
 
   <!-- Projects -->
-  <section id="projects">
-    <h2 class="section-title">projects</h2>
-    <div class="grid">
+  <section id="projects" class="py-7">
+    <h2 class="text-[13px] uppercase tracking-[0.18em] text-gray-400 mb-5 flex items-center gap-3 after:content-[''] after:flex-1 after:h-px after:bg-gray-200">projects</h2>
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
       {projects.map((p) => (
-        <a class="card" href={p.href} target="_blank" rel="noopener">
-          <div class="card-name">{p.name}</div>
-          <p class="card-blurb">{p.blurb}</p>
-          <div class="tags">{p.tags.map((t) => <span class="tag">{t}</span>)}</div>
+        <a class="block bg-white border border-gray-200 rounded-xl p-4 transition-all hover:border-blue-400 hover:-translate-y-0.5" href={p.href} target="_blank" rel="noopener">
+          <div class="font-semibold text-gray-900 mb-1">{p.name}</div>
+          <p class="text-[14px] text-gray-500 mb-3">{p.blurb}</p>
+          <div class="flex flex-wrap gap-1.5">
+            {p.tags.map((t) => <span class="text-[11px] text-blue-600 bg-blue-50 rounded-md px-2 py-0.5">{t}</span>)}
+          </div>
         </a>
       ))}
     </div>
@@ -93,32 +97,34 @@ const fmt = (d: Date) =>
 
   <!-- Writing -->
   {posts.length > 0 && (
-    <section id="writing">
-      <h2 class="section-title">writing</h2>
-      <ul class="post-list">
+    <section id="writing" class="py-7">
+      <h2 class="text-[13px] uppercase tracking-[0.18em] text-gray-400 mb-5 flex items-center gap-3 after:content-[''] after:flex-1 after:h-px after:bg-gray-200">writing</h2>
+      <ul class="list-none p-0 m-0">
         {posts.map((post) => (
-          <li class="post-item">
-            <div class="post-date">{fmt(post.data.date)}</div>
-            <h3><a href={`/blog/${post.id}/`}>{post.data.title}</a></h3>
-            <p>{post.data.description}</p>
+          <li class="py-4 border-b border-gray-100 last:border-b-0">
+            <div class="text-[12px] text-gray-400">{fmt(post.data.date)}</div>
+            <h3 class="my-1 text-[19px] font-semibold">
+              <a href={`/blog/${post.id}/`} class="text-black hover:text-blue-600 transition-colors">{post.data.title}</a>
+            </h3>
+            <p class="text-[15px] text-gray-500 m-0">{post.data.description}</p>
           </li>
         ))}
       </ul>
-      <p style="margin-top:18px"><a href="/blog">all posts →</a></p>
+      <p class="mt-4"><a href="/blog" class="text-blue-600 hover:text-blue-800">all posts →</a></p>
     </section>
   )}
 
   <!-- Publications -->
   {publications.length > 0 && (
-    <section id="publications">
-      <h2 class="section-title">publications</h2>
+    <section id="publications" class="py-7">
+      <h2 class="text-[13px] uppercase tracking-[0.18em] text-gray-400 mb-5 flex items-center gap-3 after:content-[''] after:flex-1 after:h-px after:bg-gray-200">publications</h2>
       {publications.map((pub) => (
-        <div class="pub">
-          <div class="pub-title">
-            {pub.href ? <a href={pub.href} target="_blank" rel="noopener">{pub.title}</a> : pub.title}
+        <div class="border-l-[3px] border-blue-400 py-1 pl-3.5 mb-3.5">
+          <div class="font-medium text-gray-900">
+            {pub.href ? <a href={pub.href} target="_blank" rel="noopener" class="text-black hover:text-blue-600">{pub.title}</a> : pub.title}
           </div>
-          <div class="pub-venue">{pub.venue}</div>
-          <div class="pub-authors">{pub.authors}</div>
+          <div class="text-blue-600 text-[14px]">{pub.venue}</div>
+          <div class="text-gray-400 text-[14px]">{pub.authors}</div>
         </div>
       ))}
     </section>

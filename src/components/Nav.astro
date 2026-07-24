@@ -7,14 +7,14 @@ const initials = profile.name
   .toLowerCase();
 ---
 
-<nav class="nav">
-  <div class="nav-inner">
-    <a class="nav-brand" href="/">{initials}<span class="blink">_</span></a>
-    <div class="nav-links">
-      <a href="/#about">about</a>
-      <a href="/#work">work</a>
-      <a href="/#projects">projects</a>
-      <a href="/blog">blog</a>
+<nav class="sticky top-0 z-10 bg-white/90 backdrop-blur-sm border-b border-gray-200">
+  <div class="max-w-[760px] mx-auto px-5 py-3.5 flex items-center justify-between">
+    <a class="font-semibold text-black tracking-wide text-lg" href="/">{initials}<span class="text-blue-600">_</span></a>
+    <div class="flex gap-6 text-[14px] text-gray-500">
+      <a href="/#about" class="hover:text-blue-600 transition-colors">about</a>
+      <a href="/#work" class="hover:text-blue-600 transition-colors">work</a>
+      <a href="/#projects" class="hover:text-blue-600 transition-colors">projects</a>
+      <a href="/blog" class="hover:text-blue-600 transition-colors">blog</a>
     </div>
   </div>
 </nav>
