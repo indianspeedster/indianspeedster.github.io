@@ -16,6 +16,8 @@ Five versions, naive to tuned, each measured against `torch.relu` on an MI350X. 
 
 All five kernels, the benchmark harness and the test suite are in [`flykernels`](https://github.com/indianspeedster/flykernels) — `flykernels/relu/v1_naive.py` through `v5_nontemporal.py`. Everything below was measured on an AMD Instinct MI350X VF (gfx950, CDNA4), ROCm 7.2, `flydsl` 0.3.0, `torch` 2.13.0+rocm7.2.
 
+> **These are my own measurements, taken on a single machine for my own learning.** Nothing here is endorsed, reviewed, or verified by AMD, and none of these numbers should be read as official performance claims for any AMD product. Everything is one person's benchmark of one configuration — the code is public precisely so you can run it yourself and disagree with me.
+
 ---
 
 ## The machine, the ceiling, and how I measured
