@@ -1,24 +1,76 @@
 ---
 title: "Beating torch.relu with FlyDSL: A Hands-On Guide to Bandwidth-Bound Kernels"
-description: "Writing the simplest GPU kernel there is in AMD's FlyDSL, then taking it from 2.9 to 7.4 TB/s on an MI350X — 1.27x torch.relu at its best. Five versions with the code, what each optimization was actually worth, the two that measured negative, and the testing discipline a layout DSL asks for."
+description: "Simon Boehm's CUDA matmul post, but in one dimension. Writing the simplest GPU kernel there is in AMD's FlyDSL, then taking it from 2.9 to 7.4 TB/s on an MI350X — 1.27x torch.relu at its best. Five versions with the code, what each optimization was actually worth, the two that measured negative, and the testing discipline a layout DSL asks for."
 date: 2026-08-09
 tags: ["GPU", "AMD", "CDNA4", "kernels", "FlyDSL", "MLIR", "bandwidth"]
 draft: false
 ---
 
-I wanted to learn [FlyDSL](https://github.com/ROCm/FlyDSL) — AMD's Python DSL for authoring GPU kernels through an MLIR layout-algebra stack — so I picked the smallest kernel that exists and took it as far as it would go. ReLU: `y = max(x, 0)`. Five versions, naive to tuned, each one measured against `torch.relu` on an MI350X.
+The canonical version of this exercise is [Simon Boehm's CUDA matmul post](https://siboehm.com/articles/22/CUDA-MMM): start with a naive kernel, climb an optimization ladder one rung at a time, measure every rung, end up near the vendor library. It's the best thing written on the genre and you should read it.
 
-It ends up **2.9 → 7.4 TB/s**, and between 1.07× and 1.27× `torch.relu` on tensors large enough to be bandwidth-bound. Below about 64 MB it loses, and not for any reason to do with the kernel — Part 4 has that story. The interesting part is how unevenly the speedup is distributed across the five steps.
+This is the same exercise **in one dimension**. I wanted to learn [FlyDSL](https://github.com/ROCm/FlyDSL) — AMD's Python DSL for authoring GPU kernels through an MLIR layout-algebra stack — and the thing newcomers bounce off in a layout DSL isn't the arithmetic, it's the addressing. A GEMM makes you learn a two-dimensional tiling hierarchy before you can compile anything. So I picked the smallest kernel that exists and took it as far as it would go: ReLU, `y = max(x, 0)`. One axis. One `max`. Everything you have to understand is about *where the data is*, which is exactly the part FlyDSL is opinionated about, and none of it is hidden behind a blocking strategy.
+
+Five versions, naive to tuned, each measured against `torch.relu` on an MI350X. It ends up **2.9 → 7.4 TB/s**, and between 1.07× and 1.27× `torch.relu` on tensors large enough to be bandwidth-bound. Below about 64 MB of traffic it loses, and not for any reason to do with the kernel — Part 4 has that story. The interesting part is how unevenly the speedup is distributed across the five steps.
 
 > **TL;DR.** ReLU is pure data movement — one `max` per element, no reuse, nothing to overlap — so there is exactly one figure of merit (achieved bandwidth) and a hard ceiling (~8 TB/s of HBM3E). Vectorizing to 128-bit copy atoms is worth **2.4×** and takes you past `torch.relu` on its own. Four further optimizations are worth **4% combined** at the shape I tuned on, two of them measured *negative*, and one turned out to be worth 22% — but only inside a narrow band of working-set sizes that a single-shape benchmark would have missed entirely. Along the way, the layout API asks for a specific kind of test discipline: on a GPU, "the output is correct" and "the kernel is correct" are different claims, and only the first one is what a `torch.allclose` checks.
 
-Everything below was measured on an AMD Instinct MI350X VF (gfx950, CDNA4), ROCm 7.2, `flydsl` 0.3.0, `torch` 2.13.0+rocm7.2.
+All five kernels, the benchmark harness and the test suite are in [`flykernels`](https://github.com/indianspeedster/flykernels) — `flykernels/relu/v1_naive.py` through `v5_nontemporal.py`. Everything below was measured on an AMD Instinct MI350X VF (gfx950, CDNA4), ROCm 7.2, `flydsl` 0.3.0, `torch` 2.13.0+rocm7.2.
+
+---
+
+## The machine, the ceiling, and how I measured
+
+Before any kernel, the number it's being graded against.
+
+The MI350X is CDNA4 (gfx950): 256 CUs, 288 GB of HBM3E at a **peak of ~8 TB/s**, fronted by **256 MB of last-level Infinity Cache**. That last figure looks like trivia right now. It is the entire explanation for v5.
+
+ReLU does one `max` per element and touches each element twice — read it, write it. In bf16 that's **one flop per four bytes**, an arithmetic intensity of 0.25. The MI350X does hundreds of TFLOPs. There is no version of this kernel that is compute-bound, no blocking scheme that helps, no reuse to exploit; put it on a roofline and it sits on the memory ceiling at every point. So the ladder has exactly one score:
+
+```
+GB/s = 2 · numel · sizeof(dtype) / seconds
+```
+
+and one target: 8000 GB/s, which nothing reaches. `torch.relu` gets 6762 at 8192² bf16 — 85% of peak — and that's the practical bar.
+
+**Timing.** CUDA events around a loop of 100 iterations after 20 warmup runs, so per-launch event overhead amortizes and JIT compilation lands in the warmup ([`flykernels/bench.py`](https://github.com/indianspeedster/flykernels/blob/main/flykernels/bench.py)). Run-to-run spread at these sizes is roughly ±1.5%, which is worth remembering when you see a 0.2% "win" below.
+
+**Correctness.** Two independent checks, and the second one is the reason Part 3 exists:
+
+1. **Bit-exact equality** against `torch.relu`. ReLU is exact — a value is either passed through or replaced by zero — so there's no excuse for `allclose`. NaN, ±inf and −0.0 included.
+2. **A guard region.** Allocate the output inside a larger buffer, fill the tail with a sentinel, run the kernel, assert the sentinel survived:
+
+```python
+SENTINEL = -7.0
+
+def guarded_output(numel, dtype, guard=8192):
+    buf = torch.full((numel + guard,), SENTINEL, device="cuda", dtype=dtype)
+    return buf[:numel], buf     # write into buf[:numel], then check buf[numel:]
+```
+
+Checking the output tensor tells you what landed inside it and *nothing whatsoever* about what landed outside. Four separate times in this exercise I had a kernel that passed check 1 and was still wrong. Three of those were caught by check 2. Part 3 is the fourth.
+
+## The ladder at a glance
+
+bf16 8192×8192 — the shape I tuned on. Peak is 8000 GB/s.
+
+| | version | what changed | GB/s | % of peak | vs torch | Δ vs prev |
+| --- | --- | --- | --- | --- | --- | --- |
+| v1 | [`v1_naive`](https://github.com/indianspeedster/flykernels/blob/main/flykernels/relu/v1_naive.py) | one element per thread | 2884 | 36% | 0.43× | — |
+| v2 | [`v2_vectorized`](https://github.com/indianspeedster/flykernels/blob/main/flykernels/relu/v2_vectorized.py) | 128-bit copy atoms | 6924 | 87% | 1.02× | **2.40×** |
+| v3 | [`v3_tuned`](https://github.com/indianspeedster/flykernels/blob/main/flykernels/relu/v3_tuned.py) | swept block size, unroll rejected | 6947 | 87% | 1.03× | +0.3% |
+| v4 | [`v4_buffer`](https://github.com/indianspeedster/flykernels/blob/main/flykernels/relu/v4_buffer.py) | hardware bounds checking | 7190 | 90% | 1.06× | +3.5% |
+| v5 | [`v5_nontemporal`](https://github.com/indianspeedster/flykernels/blob/main/flykernels/relu/v5_nontemporal.py) | non-temporal stores | **7221** | **90%** | **1.07×** | +0.4% |
+| | `torch.relu` | | 6762 | 85% | — | |
+
+The shape of that table is the post. One rung is worth 2.4× and clears the vendor library by itself; the remaining three are worth 4% put together, and one of them is a *negative* result I shipped anyway. If you came here for a long optimization story, ReLU is the wrong kernel — and knowing that in advance, from the arithmetic intensity, is the skill worth having.
+
+The one thing the table hides is v5, which reads as noise here and is worth **22%** two shapes over. That's Part 2's punchline.
 
 The post is in four parts:
 
 - **Part 1 — The two ideas FlyDSL is built on.** Trace-time versus run-time, and layout algebra as "columns of columns". Everything else depends on these.
 - **Part 2 — The ladder.** Five versions, what each changed, and what it measured.
-- **Part 3 — Testing a kernel, not an output.** The guard-region discipline, and the four ways I got a correct answer out of an incorrect kernel.
+- **Part 3 — Testing a kernel, not an output.** The four ways I got a correct answer out of an incorrect kernel.
 - **Part 4 — The wall.** Where the time actually goes once the kernel stops being the bottleneck.
 
 ---
@@ -48,9 +100,19 @@ Slicing with `None` keeps an axis whole; slicing with an index pins it. So `slic
 
 ![relu_01_layout_walk.svg](/blog/flydsl-relu/relu_01_layout_walk.svg)
 
-Do it once to get from the tensor to a block's tile, then again to get from the block's tile to a thread's elements. Cut into columns, take my column, cut into columns, take my column. That is the entire data path of the kernel, and it's why the code below is two divides and two slices.
+In one dimension this is as concrete as it gets: `logical_divide` chops a ruler into equal segments, and `slice` picks one. Do it once to get from the tensor to a block's tile, then again to get from the block's tile to a thread's elements. Cut into columns, take my column, cut into columns, take my column. That is the entire data path of the kernel, and it's why the code below is two divides and two slices. In a GEMM you do the same thing on two axes at once with a hierarchy of tiles stacked on top — same algebra, four times the bookkeeping, which is why I'd rather you meet it here.
 
-It looks like ceremony for something this simple. It pays for itself in Part 2: when the vector width goes from 1 to 8, **only the chunk sizes change** — every divide and slice line stays byte-for-byte identical.
+If your instincts are CUDA-shaped, the mapping is close to one-to-one:
+
+| what you want | CUDA | FlyDSL |
+| --- | --- | --- |
+| my block / thread index | `blockIdx.x`, `threadIdx.x` | `fx.block_idx.x`, `fx.thread_idx.x` |
+| this block's slice of the data | pointer arithmetic | `logical_divide` then `slice` |
+| a 128-bit load | cast to `float4` | a copy atom of 128 bits |
+| registers to hold it | a local `float4` | `fx.make_rmem_tensor(vec, ty)` |
+| don't run off the end | `if (i < n)` | `pred=`, or a buffer descriptor (v4) |
+
+The layout ceremony looks like a lot for something this simple. It pays for itself in Part 2: when the vector width goes from 1 to 8, **only the chunk sizes change** — every divide and slice line stays byte-for-byte identical.
 
 ---
 
@@ -91,15 +153,15 @@ def relu_kernel(X: fx.Tensor, Y: fx.Tensor):
 
 Two details worth pausing on.
 
-`in_bounds` is a one-element register fragment holding this thread's "am I past the end?" flag. It is a *tensor* rather than a bare boolean because `pred=` expects one bit **per copy atom**, and in general a single copy call can drive several atoms. Here it's the degenerate case: one atom, one bit. That stops being degenerate in v3, and the fact that it's per-atom rather than per-element is what case 2 in Part 3 runs into.
+`in_bounds` is a one-element register fragment holding this thread's "am I past the end?" flag. It is a *tensor* rather than a bare boolean because `pred=` expects one bit **per copy atom**, and in general a single copy call can drive several atoms. Here it's the degenerate case: one atom, one bit. That stops being degenerate in v3, and the fact that it's per-atom rather than per-element is what [case 2](#2-one-bit-cannot-describe-eight-elements) runs into.
 
 And it's `maximumf`, not `maxnumf`. The first propagates NaN, which is what `torch.relu` does; the second returns the non-NaN operand and would disagree on exactly the inputs nobody writes a test for.
 
-**Result: 2,884 GB/s** on bf16 8192×8192 — about 0.43× torch.
+**Result: 2884 GB/s — 36% of peak, 0.43× torch.**
 
 ### v2 — vectorize
 
-v1's problem isn't bandwidth, it's instruction count. Each thread moves **2 bytes per instruction** in bf16. The memory system wants a full 128 bits per lane, so v1 issues eight times more instructions than necessary, each carrying its own issue cost and latency.
+**Why v1 is slow:** it isn't bandwidth, it's instruction count. Each thread moves **2 bytes per instruction** in bf16. The memory system wants a full 128 bits per lane, so v1 issues eight times more instructions than necessary, each carrying its own issue cost and latency. At 36% of peak, the memory system is idling while the pipe drains address arithmetic.
 
 ![relu_02_access_width.svg](/blog/flydsl-relu/relu_02_access_width.svg)
 
@@ -119,11 +181,11 @@ atom_bits = vec * elem_ty.width
 
 Every `logical_divide`, `slice` and `copy_atom_call` line is untouched. So is the arithmetic — `maximumf` is already elementwise, so it operates on an 8-wide value with no edit at all.
 
-**Result: 6,924 GB/s.** A 2.4× step, and past torch's 6,762. This is the entire optimization story; everything after it is rounding error by comparison.
+**Result: 6924 GB/s — 87% of peak, and past torch's 6762.** A 2.4× step. This is the entire optimization story; everything after it is rounding error by comparison.
 
 ### v3 — unroll (a negative result)
 
-In v2 each thread issues one load, waits on it, computes, stores. Latency is hidden only by occupancy. The textbook remedy is to give each thread several independent vectors and issue *all* the loads before consuming any, so a single thread keeps multiple requests in flight.
+**Why v2 might be slow:** each thread issues one load, waits on it, computes, stores. Latency is hidden only by occupancy. The textbook remedy is to give each thread several independent vectors and issue *all* the loads before consuming any, so a single thread keeps multiple requests in flight.
 
 I built it, then swept threads-per-block against unroll factor:
 
@@ -139,23 +201,27 @@ Unrolling hurts monotonically in every row.
 
 ![relu_05_unroll_tradeoff.svg](/blog/flydsl-relu/relu_05_unroll_tradeoff.svg)
 
-v2 was already bandwidth-saturated, so extra in-flight loads per thread buy nothing — while the register pressure and the correspondingly smaller grid cost real occupancy. Total memory in flight is roughly unchanged; the number of waves available to hide anything *else* drops by 4×.
+v2 was already at 87% of peak, so extra in-flight loads per thread buy nothing — while the register pressure and the correspondingly smaller grid cost real occupancy. Total memory in flight is roughly unchanged; the number of waves available to hide anything *else* drops by 4×. The premise was wrong: you can't hide latency better on a machine that is already delivering nearly all the bandwidth it has.
 
-The only thing that helped was a *smaller* block: 128 threads over 256, worth about 3%. I kept the version anyway. A rung that says "I tried the obvious thing and measured it losing" is worth as much as one that won, and the unroll machinery is what the sweep drives.
+The best cell in the sweep is 128 threads with no unroll, and it beats 256 threads by 0.04% — which is to say, by nothing at all. I shipped that configuration because it's the measured optimum, not because it's a win; end to end v3 lands 0.3% over v2, comfortably inside run-to-run noise. I kept the version anyway. A rung that says "I tried the obvious thing and measured it losing" is worth as much as one that won, and the unroll machinery is what the sweep drives.
 
-One incidental find: blocks above 256 threads are rejected outright unless the kernel declares `known_block_size` — the AMDGPU default `max_flat_workgroup_size` is 256. The error message names the exact fix, which is more than most toolchains manage.
+Two loose ends I'll be honest about. The 1024-thread, unroll-1 cell at 3212 GB/s is the one number in this sweep I can't account for — every neighbour is ~7000, and I left it in rather than quietly trim the row. And blocks above 256 threads are rejected outright unless the kernel declares `known_block_size`, because the AMDGPU default `max_flat_workgroup_size` is 256. The error message names the exact fix, which is more than most toolchains manage.
 
 ### v4 — let the hardware check the bounds
 
-`fx.rocdl.make_buffer_tensor` wraps a tensor in an AMD **buffer resource**: a descriptor carrying a base address and a record count. Accesses through it are range-checked in silicon — no branch, no predicate register, and no index arithmetic that can overflow.
+**Why v3 is slow:** every thread computes `base = bid * tile + tid * vec`, compares it against `numel`, materialises a predicate register, and carries that predicate into both copies. None of that is data movement. At 87% of peak the remaining 13% is exactly this sort of per-thread overhead, and the machine has a way to do it for free.
 
-That deletes `in_bounds`, both `pred=` arguments, and the `base = bid * tile + tid * vec` computation. The kernel gets materially shorter, and faster: **7,190 GB/s**.
+`fx.rocdl.make_buffer_tensor` wraps a tensor in an AMD **buffer resource**: a descriptor carrying a base address and a record count. Accesses through it are range-checked in silicon — an out-of-range load returns zero, an out-of-range store is dropped, with no branch, no predicate register, and no index arithmetic that can overflow.
 
-It also has a trap in it, which is Part 3's business.
+That deletes `in_bounds`, both `pred=` arguments, and the `base` computation. The kernel gets materially shorter, and faster: **7190 GB/s — 90% of peak, 1.06× torch.**
+
+The cost is portability: `fx.rocdl.*` is CDNA-specific, so unlike v1–v3 this will not compile for RDNA. That's the trade — hardware bounds checking for target neutrality.
+
+It also has a trap in it, which is [case 4](#4-a-bounds-check-that-is-off-by-default)'s business.
 
 ### v5 — non-temporal stores
 
-ReLU streams. Every element is read once and written once and nothing is revisited, so caching either stream is pollution. CDNA buffer atoms take a cache modifier for exactly this: `BufferCopy(bits, 0)` is normal, `BufferCopy(bits, 2)` is non-temporal. I gave the load and the store separate atoms so they could be set independently:
+**Why v4 is slow:** ReLU streams. Every element is read once and written once and nothing is revisited, so caching either stream is pollution — the lines are evicted long before anyone could reuse them, and they displace whatever else the cache was holding. CDNA buffer atoms take a cache modifier for exactly this: `BufferCopy(bits, 0)` is normal, `BufferCopy(bits, 2)` is non-temporal. I gave the load and the store separate atoms so they could be set independently:
 
 | load | store | GB/s |
 | --- | --- | --- |
@@ -164,9 +230,11 @@ ReLU streams. Every element is read once and written once and nothing is revisit
 | non-temporal | cached | 6231 |
 | non-temporal | non-temporal | 6244 |
 
+(This is a separate run from the ladder table, which is why the cached/cached row reads 7077 rather than v4's 7190. Same shape, same kernel; that gap is the ±1.5% spread.)
+
 Half the theory held. A non-temporal *store* is worth +0.2% — inside the noise, which is what "this data is never read again" should look like. A non-temporal *load* costs 12%: the input stream evidently does want to pass through cache, presumably because prefetch and coalescing work on cached lines.
 
-I nearly shipped that as another negative result. Then the full benchmark showed v5 beating v4 by 21% at one particular shape, reproducible to three significant figures across repeated runs. Sweeping the working set explains it:
+I nearly shipped that as another negative result. Then the full benchmark showed v5 beating v4 by 22% at one particular shape, reproducible to three significant figures across repeated runs. Sweeping the working set explains it:
 
 | total traffic | v4 cached | v5 nt-store | gain |
 | --- | --- | --- | --- |
@@ -180,7 +248,7 @@ I nearly shipped that as another negative result. Then the full benchmark showed
 
 ![relu_07_cache_band.svg](/blog/flydsl-relu/relu_07_cache_band.svg)
 
-The gain exists only in a band — and the *input* footprint inside that band is 201–268 MB, which brackets the MI350X's 256 MB of last-level cache almost exactly. Below it, the input fits comfortably even while the output stream pollutes the cache, so protecting it changes nothing. Above it, the input cannot fit no matter what you do. Right at the boundary, evicting the write stream is the difference between the read stream staying resident and being thrashed out.
+The gain exists only in a band — and the *input* footprint inside that band is 201–268 MB (half the traffic, since reads and writes are equal), which brackets the MI350X's 256 MB of last-level cache almost exactly. Below it, the input fits comfortably even while the output stream pollutes the cache, so protecting it changes nothing. Above it, the input cannot fit no matter what you do. Right at the boundary, evicting the write stream is the difference between the read stream staying resident and being thrashed out.
 
 I'd offer that as a hypothesis consistent with the data rather than a proven mechanism — I did not instrument the cache to confirm it. The transferable lesson is narrower and safer: **a single-shape benchmark would have reported this optimization as worthless.**
 
@@ -193,21 +261,24 @@ I'd offer that as a hypothesis consistent with the data rather than a proven mec
 | 32768 × 8192 | 2048 | 6063 | 6128 | 6171 | **6308** | 5809 | 1.09× |
 | 4096 × 14336 | 2879 | 6122 | 6131 | 7148 | **7161** | 6668 | 1.07× |
 
-284 tests across the five versions, bit-exact against `torch.relu` on every shape and dtype, NaN, ±inf and −0.0 included.
+The best number on the board, 7406 GB/s, is 93% of the 8 TB/s peak. 284 tests across the five versions, bit-exact against `torch.relu` on every shape and dtype, NaN, ±inf and −0.0 included.
 
 ---
 
 ## Part 3 — Testing a kernel, not an output
 
-A layout DSL hands you explicit control over addressing, and the flip side of that control is that a kernel can compute a perfectly correct answer while touching memory it doesn't own. Four separate times in this exercise I had a kernel that passed a bit-exact comparison against `torch.relu` and was nonetheless wrong. The harness that caught three of them is twenty-four lines:
+A layout DSL hands you explicit control over addressing, and the flip side of that control is that a kernel can compute a perfectly correct answer while touching memory it doesn't own. Four separate times in this exercise I had a kernel that passed a bit-exact comparison against `torch.relu` and was nonetheless wrong. The guard region from the methodology section caught three of them.
 
-```python
-def guarded_output(numel, dtype, guard=8192):
-    buf = torch.full((numel + guard,), SENTINEL, device="cuda", dtype=dtype)
-    return buf[:numel], buf
-```
+Each case attaches to a specific rung, so here they are with their addresses:
 
-Allocate the output inside a larger buffer, fill the tail with a sentinel, run the kernel, assert the sentinel survived. Checking the output tensor tells you what landed inside it and nothing whatsoever about what landed outside. Below are the four cases, because the shapes they take are worth recognising.
+| | failure | rung | caught by |
+| --- | --- | --- | --- |
+| 1 | predicate never masks | v1's first draft (the `vectorAdd` idiom) | guard region |
+| 2 | one predicate bit, eight elements | v2's first draft | guard region |
+| 3 | 64× over-launch, silent until int32 overflows | v2's second draft | a crash, 40s into a benchmark |
+| 4 | hardware bounds checking off by default | v4's first draft | guard region — then value comparison |
+
+The shapes these take are worth recognising, so here they are in full.
 
 ### 1. Predication that doesn't predicate
 
@@ -221,7 +292,7 @@ thr_pC[a] = fx.elem_less(thr_cC[a], (M, N))
 fx.copy(copy_atom, thr_rC, thr_gC, pred=thr_pC)
 ```
 
-On 0.3.0 / gfx950 the mask comes out permanently open. Running that example verbatim on its own `M, N = 100, 1000`, with a sentinel-filled guard region allocated immediately behind `C`, the writes run **4,024 elements past the end of the output** — while `torch.allclose(A + B, C)` still returns `True`. Shapes that divide the tile exactly (`104 × 1024`, say) are unaffected, which is why it isn't obvious.
+On 0.3.0 / gfx950 the mask comes out permanently open. Running that example verbatim on its own `M, N = 100, 1000`, with a sentinel-filled guard region allocated immediately behind `C`, the writes run **4024 elements past the end of the output** — while `torch.allclose(A + B, C)` still returns `True`. Shapes that divide the tile exactly (`104 × 1024`, say) are unaffected, which is why it isn't obvious.
 
 How I tracked it down, in the order it happened, because the method generalises better than the answer:
 
@@ -319,7 +390,7 @@ At 4096 × 4096 every version measures the same. None of them is the reason:
 | FlyDSL `@flyc.jit` | 30.9 µs |
 | `torch.relu` | 4.2 µs |
 
-Roughly 25 µs of that sits inside the JIT wrapper's call path — argument marshalling and cache lookup — and it is pure CPU time. Any tensor whose kernel runs in less than that is measuring dispatch, not bandwidth. For ReLU on this machine, that's everything under about 64 MB.
+Roughly 25 µs of that sits inside the JIT wrapper's call path — argument marshalling and cache lookup — and it is pure CPU time. Any tensor whose kernel runs in less than that is measuring dispatch, not bandwidth. For ReLU on this machine, that's everything under about 64 MB of total traffic — a 4096 × 4096 bf16 tensor and below. It's also why the 34 MB row in the v5 sweep reads 1419 GB/s instead of something near 7000: that measurement never touched the memory system's limits.
 
 Which means the two largest wins available aren't kernel optimizations at all:
 
@@ -330,7 +401,7 @@ Which means the two largest wins available aren't kernel optimizations at all:
 
 ## What I'd take away
 
-**The ladder for a memory-bound op is short.** One optimization was worth 2.4×; four more were worth 4% combined, and two of those measured negative. If you want a kernel with a deep optimization story, pick one with *reuse* — a reduction, a GEMM — where blocking and shared memory have something to work with. ReLU's ceiling is set by physics you cannot program around.
+**The ladder for a memory-bound op is short.** One optimization was worth 2.4×; four more were worth 4% combined, and two of those measured negative. If you want a kernel with a deep optimization story, pick one with *reuse* — a reduction, a GEMM — where blocking and shared memory have something to work with. ReLU's ceiling is set by physics you cannot program around, and an arithmetic intensity of 0.25 tells you that before you write a line.
 
 **A passing test is not a correct kernel — know which mechanism made it pass.** My 64× over-launch was covered by a predicate that happened to mask it. The identity-tensor predicate was covered by an allocator that happened to have slack. Both were one unrelated change away from being a crash, and in the first case the unrelated change was widening the copy atom, which pushed an index over 2³¹ forty seconds into a benchmark.
 
@@ -339,3 +410,13 @@ Which means the two largest wins available aren't kernel optimizations at all:
 **Measure across shapes, not at one.** The non-temporal store looked worthless at 8192² and was worth 22% two shapes later. One number is not a benchmark.
 
 Next up: a reduction, where the ladder actually goes somewhere.
+
+---
+
+## Further reading
+
+- [Simon Boehm, *How to Optimize a CUDA Matmul Kernel*](https://siboehm.com/articles/22/CUDA-MMM) — the two-dimensional version of this exercise, and the reason this post has the shape it does.
+- [FlyDSL](https://github.com/ROCm/FlyDSL) — the DSL itself. Start with `examples/01-vectorAdd.py`, with case 1 above in mind.
+- [`flykernels`](https://github.com/indianspeedster/flykernels) — all five kernels, the sweep scripts, and the 284 tests.
+- [AMD CDNA4 ISA reference](https://www.amd.com/en/search/documentation/hub.html) — buffer resource descriptors, cache modifiers, `max_flat_workgroup_size`.
+- [Occupancy math on the MI355X](/blog/occupancy-math-mi355x) — my earlier post on the resource limiters behind v3's sweep.
