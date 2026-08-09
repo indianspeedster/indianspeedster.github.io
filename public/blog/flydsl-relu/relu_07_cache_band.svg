@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-4 -14 1038 480" width="1038" height="480" font-family="system-ui, -apple-system, sans-serif">
+  <rect x="-4" y="-14" width="1038" height="480" fill="#ffffff"/>
+  <rect x="20" y="90" width="310" height="300" rx="4" fill="none" stroke="#1e1e1e" stroke-width="2"/>
+  <rect x="40" y="185" width="270" height="110" rx="4" fill="none" stroke="#868e96" stroke-width="2"/>
+  <rect x="48" y="195" width="90" height="92" rx="4" fill="#b2f2bb" stroke="#2b8a3e" stroke-width="2"/>
+  <rect x="144" y="195" width="90" height="92" rx="4" fill="#ffd8a8" stroke="#e8590c" stroke-width="2"/>
+  <rect x="360" y="90" width="310" height="300" rx="4" fill="none" stroke="#e8590c" stroke-width="2"/>
+  <rect x="380" y="185" width="270" height="110" rx="4" fill="none" stroke="#868e96" stroke-width="2"/>
+  <rect x="388" y="195" width="250" height="92" rx="4" fill="#b2f2bb" stroke="#2b8a3e" stroke-width="2"/>
+  <rect x="644" y="195" width="8" height="92" rx="4" fill="#ffd8a8" stroke="#e8590c" stroke-width="2"/>
+  <rect x="700" y="90" width="310" height="300" rx="4" fill="none" stroke="#1e1e1e" stroke-width="2"/>
+  <rect x="720" y="185" width="270" height="110" rx="4" fill="none" stroke="#868e96" stroke-width="2"/>
+  <rect x="728" y="195" width="262" height="92" rx="4" fill="#b2f2bb" stroke="#2b8a3e" stroke-width="2"/>
+  <text x="20" y="28" font-size="20" text-anchor="start" fill="#1e1e1e" font-weight="600">A non-temporal store only pays near cache capacity</text>
+  <text x="20" y="68" font-size="14" text-anchor="start" fill="#868e96">256 MB last-level cache  ·  what competes for it</text>
+  <text x="40" y="124" font-size="15" text-anchor="start" fill="#1e1e1e">input 67 MB</text>
+  <text x="40" y="148" font-size="13" text-anchor="start" fill="#868e96">total traffic 134 MB</text>
+  <text x="175" y="176" font-size="12" text-anchor="middle" fill="#868e96">cache capacity</text>
+  <text x="93" y="244" font-size="13" text-anchor="middle" fill="#2b8a3e">input</text>
+  <text x="189" y="243" font-size="12" text-anchor="middle" fill="#e8590c">out</text>
+  <text x="40" y="327" font-size="13" text-anchor="start" fill="#868e96">both fit comfortably</text>
+  <text x="40" y="360" font-size="16" text-anchor="start" fill="#868e96" font-weight="600">NT store: 1.00x</text>
+  <text x="380" y="124" font-size="15" text-anchor="start" fill="#e8590c">input 201-268 MB</text>
+  <text x="380" y="148" font-size="13" text-anchor="start" fill="#868e96">total traffic 403-537 MB</text>
+  <text x="515" y="176" font-size="12" text-anchor="middle" fill="#868e96">cache capacity</text>
+  <text x="513" y="244" font-size="13" text-anchor="middle" fill="#2b8a3e">input</text>
+  <text x="648" y="243" font-size="12" text-anchor="middle" fill="#e8590c">out</text>
+  <text x="380" y="327" font-size="13" text-anchor="start" fill="#e8590c">the output stream evicts the input</text>
+  <text x="380" y="360" font-size="16" text-anchor="start" fill="#e8590c" font-weight="600">NT store: 1.22x</text>
+  <text x="720" y="124" font-size="15" text-anchor="start" fill="#1e1e1e">input 402 MB +</text>
+  <text x="720" y="148" font-size="13" text-anchor="start" fill="#868e96">total traffic 805 MB +</text>
+  <text x="855" y="176" font-size="12" text-anchor="middle" fill="#868e96">cache capacity</text>
+  <text x="859" y="244" font-size="13" text-anchor="middle" fill="#2b8a3e">input</text>
+  <text x="720" y="327" font-size="13" text-anchor="start" fill="#868e96">input can't fit regardless</text>
+  <text x="720" y="360" font-size="16" text-anchor="start" fill="#868e96" font-weight="600">NT store: 1.03x</text>
+  <text x="20" y="438" font-size="14" text-anchor="start" fill="#e03131">a single-shape benchmark reports this as worthless: 1.00x at 8192^2, 1.22x two shapes later</text>
+</svg>

@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-4 -14 1067 509" width="1067" height="509" font-family="system-ui, -apple-system, sans-serif">
+  <rect x="-4" y="-14" width="1067" height="509" fill="#ffffff"/>
+  <rect x="20" y="100" width="300" height="80" rx="4" fill="none" stroke="#1e1e1e" stroke-width="2"/>
+  <line x1="330" y1="140" x2="400" y2="140" stroke="#e03131" stroke-width="2" stroke-linecap="round"/>
+  <polygon points="400.0,140.0 388.9,144.7 388.9,135.3" fill="#e03131"/>
+  <rect x="410" y="118" width="360" height="44" rx="4" fill="#b2f2bb" stroke="#2b8a3e" stroke-width="2"/>
+  <rect x="770" y="118" width="200" height="44" rx="4" fill="none" stroke="#868e96" stroke-width="2" stroke-dasharray="6 4"/>
+  <line x1="840" y1="210" x2="840" y2="170" stroke="#e03131" stroke-width="2" stroke-linecap="round"/>
+  <polygon points="840.0,170.0 844.7,181.1 835.3,181.1" fill="#e03131"/>
+  <rect x="20" y="330" width="300" height="80" rx="4" fill="none" stroke="#1e1e1e" stroke-width="2"/>
+  <line x1="330" y1="370" x2="400" y2="370" stroke="#2b8a3e" stroke-width="2" stroke-linecap="round"/>
+  <polygon points="400.0,370.0 388.9,374.7 388.9,365.3" fill="#2b8a3e"/>
+  <rect x="410" y="348" width="360" height="44" rx="4" fill="#b2f2bb" stroke="#2b8a3e" stroke-width="2"/>
+  <rect x="770" y="348" width="200" height="44" rx="4" fill="none" stroke="#868e96" stroke-width="2" stroke-dasharray="6 4"/>
+  <line x1="840" y1="440" x2="840" y2="400" stroke="#2b8a3e" stroke-width="2" stroke-linecap="round"/>
+  <line x1="825" y1="430" x2="855" y2="406" stroke="#e03131" stroke-width="2" stroke-linecap="round"/>
+  <line x1="825" y1="406" x2="855" y2="430" stroke="#e03131" stroke-width="2" stroke-linecap="round"/>
+  <text x="20" y="28" font-size="20" text-anchor="start" fill="#1e1e1e" font-weight="600">The docstring promises bounds checking. The default checks nothing.</text>
+  <text x="20" y="85" font-size="16" text-anchor="start" fill="#868e96" font-weight="600">max_size = True   (the default)</text>
+  <text x="40" y="127" font-size="13" text-anchor="start" fill="#868e96">buffer descriptor</text>
+  <text x="40" y="155" font-size="14" text-anchor="start" fill="#e03131">base · num_records = 0xFFFFFFFF</text>
+  <text x="590" y="144" font-size="15" text-anchor="middle" fill="#2b8a3e">your tensor</text>
+  <text x="870" y="144" font-size="13" text-anchor="middle" fill="#868e96">someone else's memory</text>
+  <text x="870" y="205" font-size="14" text-anchor="start" fill="#e03131">sails straight through</text>
+  <text x="20" y="315" font-size="16" text-anchor="start" fill="#868e96" font-weight="600">max_size = False  (what you wanted)</text>
+  <text x="40" y="357" font-size="13" text-anchor="start" fill="#868e96">buffer descriptor</text>
+  <text x="40" y="385" font-size="14" text-anchor="start" fill="#2b8a3e">base · num_records = N bytes</text>
+  <text x="590" y="374" font-size="15" text-anchor="middle" fill="#2b8a3e">your tensor</text>
+  <text x="870" y="374" font-size="13" text-anchor="middle" fill="#868e96">someone else's memory</text>
+  <text x="870" y="431" font-size="14" text-anchor="start" fill="#2b8a3e">dropped in hardware</text>
+  <text x="410" y="467" font-size="13" text-anchor="start" fill="#868e96">but a straddling access is dropped whole, valid elements and all</text>
+</svg>

@@ -1,0 +1,53 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-4 -14 1028 478" width="1028" height="478" font-family="system-ui, -apple-system, sans-serif">
+  <rect x="-4" y="-14" width="1028" height="478" fill="#ffffff"/>
+  <rect x="150" y="130" width="70" height="46" rx="4" fill="#e9ecef" stroke="#1e1e1e" stroke-width="2"/>
+  <rect x="230" y="130" width="70" height="46" rx="4" fill="#e9ecef" stroke="#1e1e1e" stroke-width="2"/>
+  <rect x="310" y="130" width="70" height="46" rx="4" fill="#e9ecef" stroke="#1e1e1e" stroke-width="2"/>
+  <rect x="390" y="130" width="70" height="46" rx="4" fill="#e9ecef" stroke="#1e1e1e" stroke-width="2"/>
+  <rect x="150" y="200" width="70" height="46" rx="4" fill="#b2f2bb" stroke="#2b8a3e" stroke-width="2"/>
+  <rect x="230" y="200" width="70" height="46" rx="4" fill="#b2f2bb" stroke="#2b8a3e" stroke-width="2"/>
+  <rect x="310" y="200" width="70" height="46" rx="4" fill="#b2f2bb" stroke="#2b8a3e" stroke-width="2"/>
+  <rect x="390" y="200" width="70" height="46" rx="4" fill="#b2f2bb" stroke="#2b8a3e" stroke-width="2"/>
+  <rect x="670" y="130" width="70" height="46" rx="4" fill="#e9ecef" stroke="#1e1e1e" stroke-width="2"/>
+  <rect x="750" y="130" width="70" height="46" rx="4" fill="#e9ecef" stroke="#1e1e1e" stroke-width="2"/>
+  <rect x="830" y="130" width="70" height="46" rx="4" fill="#e9ecef" stroke="#1e1e1e" stroke-width="2"/>
+  <rect x="910" y="130" width="70" height="46" rx="4" fill="#e9ecef" stroke="#1e1e1e" stroke-width="2"/>
+  <rect x="670" y="200" width="70" height="46" rx="4" fill="#ffc9c9" stroke="#e03131" stroke-width="2"/>
+  <rect x="750" y="200" width="70" height="46" rx="4" fill="#ffc9c9" stroke="#e03131" stroke-width="2"/>
+  <rect x="830" y="200" width="70" height="46" rx="4" fill="#ffc9c9" stroke="#e03131" stroke-width="2"/>
+  <rect x="910" y="200" width="70" height="46" rx="4" fill="#ffc9c9" stroke="#e03131" stroke-width="2"/>
+  <line x1="500" y1="90" x2="500" y2="300" stroke="#868e96" stroke-width="2" stroke-linecap="round" stroke-dasharray="6 4"/>
+  <rect x="20" y="380" width="440" height="60" rx="4" fill="none" stroke="#e03131" stroke-width="2"/>
+  <line x1="475" y1="410" x2="545" y2="410" stroke="#e03131" stroke-width="2" stroke-linecap="round"/>
+  <polygon points="545.0,410.0 533.9,414.7 533.9,405.3" fill="#e03131"/>
+  <rect x="560" y="380" width="440" height="60" rx="4" fill="none" stroke="#e03131" stroke-width="2"/>
+  <text x="20" y="28" font-size="20" text-anchor="start" fill="#1e1e1e" font-weight="600">The predicate that never masked anything</text>
+  <text x="20" y="68" font-size="14" text-anchor="start" fill="#868e96">coordinate each thread believes it owns  ·  tensor (6,10)  ·  tile (4,8)</text>
+  <text x="20" y="117" font-size="18" text-anchor="start" fill="#2b8a3e" font-weight="600">EXPECTED</text>
+  <text x="20" y="158" font-size="14" text-anchor="start" fill="#868e96">bid_m = 0</text>
+  <text x="185" y="157" font-size="14" text-anchor="middle" fill="#1e1e1e">0</text>
+  <text x="265" y="157" font-size="14" text-anchor="middle" fill="#1e1e1e">1</text>
+  <text x="345" y="157" font-size="14" text-anchor="middle" fill="#1e1e1e">2</text>
+  <text x="425" y="157" font-size="14" text-anchor="middle" fill="#1e1e1e">3</text>
+  <text x="20" y="228" font-size="14" text-anchor="start" fill="#868e96">bid_m = 1</text>
+  <text x="185" y="227" font-size="14" text-anchor="middle" fill="#2b8a3e">4</text>
+  <text x="265" y="227" font-size="14" text-anchor="middle" fill="#2b8a3e">5</text>
+  <text x="345" y="227" font-size="14" text-anchor="middle" fill="#2b8a3e">6</text>
+  <text x="425" y="227" font-size="14" text-anchor="middle" fill="#2b8a3e">7</text>
+  <text x="150" y="293" font-size="14" text-anchor="start" fill="#2b8a3e">+ tile extent (4)</text>
+  <text x="540" y="117" font-size="18" text-anchor="start" fill="#e03131" font-weight="600">PRODUCED</text>
+  <text x="540" y="158" font-size="14" text-anchor="start" fill="#868e96">bid_m = 0</text>
+  <text x="705" y="157" font-size="14" text-anchor="middle" fill="#1e1e1e">0</text>
+  <text x="785" y="157" font-size="14" text-anchor="middle" fill="#1e1e1e">1</text>
+  <text x="865" y="157" font-size="14" text-anchor="middle" fill="#1e1e1e">2</text>
+  <text x="945" y="157" font-size="14" text-anchor="middle" fill="#1e1e1e">3</text>
+  <text x="540" y="228" font-size="14" text-anchor="start" fill="#868e96">bid_m = 1</text>
+  <text x="705" y="227" font-size="14" text-anchor="middle" fill="#e03131">1</text>
+  <text x="785" y="227" font-size="14" text-anchor="middle" fill="#e03131">2</text>
+  <text x="865" y="227" font-size="14" text-anchor="middle" fill="#e03131">3</text>
+  <text x="945" y="227" font-size="14" text-anchor="middle" fill="#e03131">4</text>
+  <text x="670" y="293" font-size="14" text-anchor="start" fill="#e03131">+ 1 per block index</text>
+  <text x="20" y="363" font-size="14" text-anchor="start" fill="#868e96">every produced coordinate is still &lt; 6, so ...</text>
+  <text x="40" y="413" font-size="14" text-anchor="start" fill="#e03131">elem_less(coord, shape) -&gt; true for every thread</text>
+  <text x="580" y="414" font-size="15" text-anchor="start" fill="#e03131">the predicate masks nothing at all</text>
+</svg>

@@ -1,0 +1,52 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-4 -14 1028 494" width="1028" height="494" font-family="system-ui, -apple-system, sans-serif">
+  <rect x="-4" y="-14" width="1028" height="494" fill="#ffffff"/>
+  <rect x="20" y="110" width="64" height="42" rx="4" fill="#e9ecef" stroke="#1e1e1e" stroke-width="2"/>
+  <rect x="90" y="110" width="64" height="42" rx="4" fill="#e9ecef" stroke="#1e1e1e" stroke-width="2"/>
+  <rect x="160" y="110" width="64" height="42" rx="4" fill="#e9ecef" stroke="#1e1e1e" stroke-width="2"/>
+  <rect x="230" y="110" width="64" height="42" rx="4" fill="#e9ecef" stroke="#1e1e1e" stroke-width="2"/>
+  <rect x="300" y="110" width="64" height="42" rx="4" fill="#e9ecef" stroke="#1e1e1e" stroke-width="2"/>
+  <rect x="370" y="110" width="64" height="42" rx="4" fill="#e9ecef" stroke="#1e1e1e" stroke-width="2"/>
+  <rect x="440" y="110" width="64" height="42" rx="4" fill="#e9ecef" stroke="#1e1e1e" stroke-width="2"/>
+  <rect x="510" y="110" width="64" height="42" rx="4" fill="#e9ecef" stroke="#1e1e1e" stroke-width="2"/>
+  <rect x="580" y="110" width="64" height="42" rx="4" fill="#e9ecef" stroke="#1e1e1e" stroke-width="2"/>
+  <rect x="650" y="110" width="64" height="42" rx="4" fill="#e9ecef" stroke="#1e1e1e" stroke-width="2"/>
+  <rect x="720" y="110" width="64" height="42" rx="4" fill="none" stroke="#868e96" stroke-width="2" stroke-dasharray="6 4"/>
+  <rect x="790" y="110" width="64" height="42" rx="4" fill="none" stroke="#868e96" stroke-width="2" stroke-dasharray="6 4"/>
+  <line x1="718" y1="88" x2="718" y2="168" stroke="#e03131" stroke-width="2" stroke-linecap="round"/>
+  <line x1="20" y1="96" x2="294" y2="96" stroke="#868e96" stroke-width="2" stroke-linecap="round"/>
+  <line x1="300" y1="96" x2="574" y2="96" stroke="#868e96" stroke-width="2" stroke-linecap="round"/>
+  <line x1="580" y1="176" x2="854" y2="176" stroke="#e03131" stroke-width="2" stroke-linecap="round"/>
+  <line x1="640" y1="240" x2="400" y2="290" stroke="#e03131" stroke-width="2" stroke-linecap="round"/>
+  <polygon points="400.0,290.0 409.9,283.2 411.8,292.3" fill="#e03131"/>
+  <line x1="790" y1="240" x2="850" y2="290" stroke="#e03131" stroke-width="2" stroke-linecap="round"/>
+  <polygon points="850.0,290.0 838.5,286.5 844.5,279.3" fill="#e03131"/>
+  <rect x="140" y="300" width="400" height="110" rx="4" fill="none" stroke="#e03131" stroke-width="2"/>
+  <rect x="600" y="300" width="400" height="110" rx="4" fill="none" stroke="#e03131" stroke-width="2"/>
+  <text x="20" y="28" font-size="20" text-anchor="start" fill="#1e1e1e" font-weight="600">One bit cannot describe a partially valid vector</text>
+  <text x="20" y="68" font-size="14" text-anchor="start" fill="#868e96">tensor of 10 elements  ·  vector width 4</text>
+  <text x="52" y="135" font-size="14" text-anchor="middle" fill="#1e1e1e">0</text>
+  <text x="122" y="135" font-size="14" text-anchor="middle" fill="#1e1e1e">1</text>
+  <text x="192" y="135" font-size="14" text-anchor="middle" fill="#1e1e1e">2</text>
+  <text x="262" y="135" font-size="14" text-anchor="middle" fill="#1e1e1e">3</text>
+  <text x="332" y="135" font-size="14" text-anchor="middle" fill="#1e1e1e">4</text>
+  <text x="402" y="135" font-size="14" text-anchor="middle" fill="#1e1e1e">5</text>
+  <text x="472" y="135" font-size="14" text-anchor="middle" fill="#1e1e1e">6</text>
+  <text x="542" y="135" font-size="14" text-anchor="middle" fill="#1e1e1e">7</text>
+  <text x="612" y="135" font-size="14" text-anchor="middle" fill="#1e1e1e">8</text>
+  <text x="682" y="135" font-size="14" text-anchor="middle" fill="#1e1e1e">9</text>
+  <text x="752" y="135" font-size="14" text-anchor="middle" fill="#868e96">10</text>
+  <text x="822" y="135" font-size="14" text-anchor="middle" fill="#868e96">11</text>
+  <text x="728" y="91" font-size="14" text-anchor="start" fill="#e03131">tensor ends here</text>
+  <text x="728" y="184" font-size="13" text-anchor="start" fill="#868e96">not yours</text>
+  <text x="157" y="82" font-size="13" text-anchor="middle" fill="#868e96">atom 0 — all valid</text>
+  <text x="437" y="82" font-size="13" text-anchor="middle" fill="#868e96">atom 1 — all valid</text>
+  <text x="717" y="204" font-size="15" text-anchor="middle" fill="#e03131">atom 2 — half valid, half not</text>
+  <text x="717" y="228" font-size="13" text-anchor="middle" fill="#868e96">and the predicate is ONE BIT for the whole atom</text>
+  <text x="160" y="335" font-size="16" text-anchor="start" fill="#e03131" font-weight="600">bit = 1  -&gt;  "go"</text>
+  <text x="160" y="363" font-size="14" text-anchor="start" fill="#1e1e1e">elements 10 and 11 are written</text>
+  <text x="160" y="390" font-size="13" text-anchor="start" fill="#e03131">out-of-bounds write · output still correct</text>
+  <text x="620" y="335" font-size="16" text-anchor="start" fill="#e03131" font-weight="600">bit = 0  -&gt;  "skip"</text>
+  <text x="620" y="363" font-size="14" text-anchor="start" fill="#1e1e1e">elements 8 and 9 never written</text>
+  <text x="620" y="390" font-size="13" text-anchor="start" fill="#e03131">memory intact · output wrong</text>
+  <text x="140" y="452" font-size="13" text-anchor="start" fill="#868e96">predication took the left branch in v2; hardware bounds checking took the right one in v4</text>
+</svg>
