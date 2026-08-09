@@ -39,7 +39,7 @@ and one target: 8000 GB/s, which nothing reaches. `torch.relu` gets 6762 at 8192
 **Correctness.** Two independent checks, and the second one is the reason Part 3 exists:
 
 1. **Bit-exact equality** against `torch.relu`. ReLU is exact — a value is either passed through or replaced by zero — so there's no excuse for `allclose`. NaN, ±inf and −0.0 included.
-2. **A guard region.** Allocate the output inside a larger buffer, fill the tail with a sentinel, run the kernel, assert the sentinel survived:
+2. **A guard region** ([`flykernels/checks.py`](https://github.com/indianspeedster/flykernels/blob/main/flykernels/checks.py)). Allocate the output inside a larger buffer, fill the tail with a sentinel, run the kernel, assert the sentinel survived:
 
 ```python
 SENTINEL = -7.0
@@ -263,7 +263,7 @@ I'd offer that as a hypothesis consistent with the data rather than a proven mec
 | 32768 × 8192 | 2048 | 6063 | 6128 | 6171 | **6308** | 5809 | 1.09× |
 | 4096 × 14336 | 2879 | 6122 | 6131 | 7148 | **7161** | 6668 | 1.07× |
 
-The best number on the board, 7406 GB/s, is 93% of the 8 TB/s peak. 284 tests across the five versions, bit-exact against `torch.relu` on every shape and dtype, NaN, ±inf and −0.0 included.
+The best number on the board, 7406 GB/s, is 93% of the 8 TB/s peak. [284 tests](https://github.com/indianspeedster/flykernels/blob/main/tests/test_relu.py) across the five versions, bit-exact against `torch.relu` on every shape and dtype, NaN, ±inf and −0.0 included.
 
 ---
 
@@ -284,7 +284,7 @@ The shapes these take are worth recognising, so here they are in full.
 
 ### 1. Predication that doesn't predicate
 
-I built v1 on the idiom in `examples/01-vectorAdd.py`. It's elegant: build an "identity" tensor whose value at each position *is* its own coordinate, tile it exactly like the data, and compare each thread's coordinate against the tensor shape.
+I built v1 on the idiom in [`examples/01-vectorAdd.py`](https://github.com/ROCm/FlyDSL/blob/main/examples/01-vectorAdd.py), which ships with FlyDSL itself. It's elegant: build an "identity" tensor whose value at each position *is* its own coordinate, tile it exactly like the data, and compare each thread's coordinate against the tensor shape.
 
 ```python
 idC = fx.make_view((0, 0), fx.make_identity_layout((M, N)))
@@ -418,7 +418,7 @@ Next up: a reduction, where the ladder actually goes somewhere.
 ## Further reading
 
 - [Simon Boehm, *How to Optimize a CUDA Matmul Kernel*](https://siboehm.com/articles/22/CUDA-MMM) — the two-dimensional version of this exercise, and the reason this post has the shape it does.
-- [FlyDSL](https://github.com/ROCm/FlyDSL) — the DSL itself. Start with `examples/01-vectorAdd.py`, with case 1 above in mind.
+- [FlyDSL](https://github.com/ROCm/FlyDSL) — the DSL itself. Start with [`examples/01-vectorAdd.py`](https://github.com/ROCm/FlyDSL/blob/main/examples/01-vectorAdd.py), with case 1 above in mind.
 - [`flykernels`](https://github.com/indianspeedster/flykernels) — all five kernels, the sweep scripts, and the 284 tests.
 - [AMD CDNA4 ISA reference](https://www.amd.com/en/search/documentation/hub.html) — buffer resource descriptors, cache modifiers, `max_flat_workgroup_size`.
 - [Occupancy math on the MI355X](/blog/occupancy-math-mi355x) — my earlier post on the resource limiters behind v3's sweep.
