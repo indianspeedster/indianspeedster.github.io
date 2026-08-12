@@ -1,6 +1,26 @@
 @import "tailwindcss";
 @plugin "@tailwindcss/typography";
 
+/* ---- Design tokens ----
+   Shared by the page chrome and by in-post widgets (e.g. the occupancy
+   calculator), which reference these by name. Keep in sync with the Tailwind
+   utilities used in the layouts. */
+:root {
+  --sans: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --mono: Monaco, Consolas, "Fira Code", "Fira Mono", Menlo, "DejaVu Sans Mono", monospace;
+
+  --text: #111827;        /* gray-900 */
+  --text-dim: #6b7280;    /* gray-500 */
+  --text-faint: #9ca3af;  /* gray-400 */
+
+  --bg-card: #ffffff;
+  --bg-soft: #f9fafb;     /* gray-50  */
+  --border: #e5e7eb;      /* gray-200 */
+
+  --accent: #2563eb;      /* blue-600 */
+  --accent-soft: #eff6ff; /* blue-50  */
+}
+
 /* ---- Base ---- */
 @layer base {
   body {
@@ -125,10 +145,21 @@
   word-break: break-word;
 }
 
-/* ---- Image captions ---- */
+/* ---- Figures ----
+   Emitted by the rehype-figure plugin: a standalone image in a paragraph
+   becomes <figure><img><figcaption>, numbered per post. */
 .prose figure {
-  @apply my-6;
+  @apply my-7;
+}
+.prose figure img {
+  @apply my-0;
 }
 .prose figcaption {
-  @apply text-gray-500 text-center text-sm mt-2;
+  @apply text-gray-500 text-[13.5px] leading-normal mt-2.5 px-1;
+}
+.prose figcaption .fig-label {
+  @apply text-gray-400 font-semibold not-italic;
+}
+.prose figcaption code {
+  @apply text-[0.9em];
 }

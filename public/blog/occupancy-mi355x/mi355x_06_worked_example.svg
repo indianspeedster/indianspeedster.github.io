@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="980" height="620" viewBox="0 0 980 620" font-family="Comic Sans MS, Segoe Print, sans-serif">
+<svg xmlns="http://www.w3.org/2000/svg" width="980" height="620" viewBox="0 0 980 620" font-family="system-ui, -apple-system, sans-serif">
 <defs><marker id="ah" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L8,3 L0,6 Z" fill="#1e1e1e"/></marker></defs>
 <rect width="980" height="620" fill="#ffffff"/>
 <rect x="60" y="64" width="860" height="56" rx="12" fill="#e9ecef" stroke="#1e1e1e" stroke-width="2"/>

@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="960" height="560" viewBox="0 0 960 560" font-family="Comic Sans MS, Segoe Print, sans-serif">
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="560" viewBox="0 0 960 560" font-family="system-ui, -apple-system, sans-serif">
 <rect width="960" height="560" fill="#ffffff"/>
 <text x="40" y="40" font-size="21" fill="#1e1e1e" font-weight="bold">ILP substitutes for occupancy: the matrix core stays fed with fewer waves</text>
 <text x="40" y="63" font-size="14" fill="#adb5bd">MXFP8 v_mfma_f32_16x16x128_f8f6f4 on MI355X · occupancy throttled separately via LDS · higher ILP = more throughput at lower occupancy</text>
