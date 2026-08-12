@@ -26,7 +26,7 @@ Occupancy is worth understanding precisely — both so you can fix the kernels t
 
 Occupancy is, start to finish, a story about how a fixed pool of resources gets divided among the work you launch. So before any of the math lands, you need a clear mental model of the chip — and in particular, *which resources are private and which are shared*. We'll build it top-down and keep returning to that one distinction, because it's the hinge the whole calculation turns on.
 
-![mi355x_01_chip_hierarchy.svg](/blog/occupancy-mi355x/mi355x_01_chip_hierarchy.svg)
+![The MI355X hierarchy from chip through 8 XCDs, 32 CUs each, down to 4 SIMDs per CU.](/blog/occupancy-mi355x/mi355x_01_chip_hierarchy.svg "MI355X top down: 8 XCDs, 32 CUs each, 4 SIMDs per CU. The register file is private to a SIMD, which is why occupancy is counted there and not per CU.")
 
 ### The chip, top down
 
@@ -45,7 +45,7 @@ A CU is four SIMD units (single-instruction, multiple-data — the vector engine
 
 Here's the distinction to burn in: **the register files are per-SIMD; the LDS is per-CU.** A wave that lands on SIMD 0 cannot touch SIMD 1's registers, but every wave in a workgroup — wherever it lands — sees the same LDS. That single asymmetry is why the four occupancy limiters don't share a denominator — the reason the math below needs a unit conversion.
 
-![mi355x_02_cu_anatomy.svg](/blog/occupancy-mi355x/mi355x_02_cu_anatomy.svg)
+![A Compute Unit containing four SIMDs, each with 64 lanes, a 512-entry VGPR file and up to 8 resident waves, over shared LDS.](/blog/occupancy-mi355x/mi355x_02_cu_anatomy.svg "What is private and what is shared. Registers are per-SIMD, LDS is per-CU, and that split is the reason the four limiters do not share units.")
 
 ### Threads, lanes, and wavefronts
 
@@ -53,7 +53,7 @@ The hardware doesn't execute threads one at a time. It executes **wavefronts**: 
 
 A SIMD holds up to **8 wavefronts resident** at once. Resident means their registers are live and reserved; only one wave issues per cycle, and the scheduler hides latency by switching to a different ready wave whenever the current one stalls. Occupancy is just the ratio of resident waves to that maximum of 8 — counted per SIMD, capped at 32 per CU. Crucially, occupancy says nothing about whether those waves are doing useful work; it only counts how many are parked — the distinction the second half of this guide turns on.
 
-![mi355x_03_wavefront_model.svg](/blog/occupancy-mi355x/mi355x_03_wavefront_model.svg)
+![One SIMD holding eight resident wavefronts, one executing this cycle and seven resident but waiting.](/blog/occupancy-mi355x/mi355x_03_wavefront_model.svg "Occupancy counts resident waves per SIMD against a hardware maximum of 8. It is not a measure of how many are executing.")
 
 ### If you think in CUDA: a Rosetta stone
 
@@ -74,7 +74,7 @@ The one place the analogy frays: NVIDIA has no separate "accumulator register" c
 
 ### The Matrix Core
 
-The reason any of this exists on an AI accelerator is the Matrix Core — the MFMA engine. CDNA4 overhauled it with native FP8, FP6, and FP4 support and roughly doubled per-CU matrix throughput versus CDNA3. The MI355X peaks at about 5 PFLOPs of MXFP8 and 10 PFLOPs of MXFP6/FP4 dense matrix throughput, with structured sparsity pushing FP4 past 20 PFLOPs. The instruction you'll meet in MXFP8 GEMM kernels is the scaled-MFMA family — `v_mfma_scale_f32_16x16x128_f8f6f4` or its `32x32x64` sibling, depending on the tile — which folds per-block microscaling directly into the matrix op.
+The reason any of this exists on an AI accelerator is the Matrix Core — the MFMA engine. CDNA4 overhauled it with native FP8, FP6, and FP4 support and roughly doubled per-CU matrix throughput versus CDNA3. The MI355X peaks at about 5 PFLOPs of MXFP8 and 10 PFLOPs of MXFP6/MXFP4 dense matrix throughput. The instruction you'll meet in MXFP8 GEMM kernels is the scaled-MFMA family — `v_mfma_scale_f32_16x16x128_f8f6f4` or its `32x32x64` sibling, depending on the tile — which folds per-block microscaling directly into the matrix op.
 
 The mechanical detail that connects back to occupancy: MFMA reads its operands from the VGPR file and accumulates back into registers (regular or accumulator VGPRs — the same 512-entry file). The matrix engine is fed by registers — nothing slower can keep it busy at peak. That's exactly the tension the memory hierarchy makes concrete.
 
@@ -84,7 +84,7 @@ From fastest and smallest to slowest and largest: the register file (VGPR/AccVGP
 
 The gap that matters is the very first one. Only the register file delivers operands fast enough to sustain the Matrix Core at peak; LDS, despite being on-chip and despite CDNA4's generous 160 KB, is meaningfully slower and prone to bank conflicts. Keeping the hot accumulation register-resident — not in LDS — is what lets a kernel hit the matrix peak.
 
-![mi355x_04_memory_hierarchy.svg](/blog/occupancy-mi355x/mi355x_04_memory_hierarchy.svg)
+![The memory hierarchy from registers through LDS, L1, L2 and Infinity Cache down to HBM3E, with bandwidth falling and capacity rising.](/blog/occupancy-mi355x/mi355x_04_memory_hierarchy.svg "Only registers feed the matrix core directly. Everything below exists to keep them supplied.")
 
 ### CDNA3 → CDNA4, in one box
 
@@ -124,7 +124,7 @@ Your occupancy is the minimum of the four, then clamped by the hardware caps (8 
 
 The fourth limiter is workgroup-level. A CU can hold only a fixed number of resident workgroups, enforced in part by **barrier resources** — every workgroup of more than one wavefront needs a hardware barrier to implement `__syncthreads` / `s_barrier`, and a CU has a limited pool of them. This one stays invisible until your workgroups get *small*: a swarm of tiny one- or two-wave workgroups can exhaust the workgroup or barrier slots while VGPRs, SGPRs, and LDS still have room to spare. With the 256-thread (4-wave) tiles typical of these GEMM kernels it rarely binds — but for fine-grained kernels it's the limiter people forget, right up until the profiler shows occupancy stuck below what the register and LDS math predicts.
 
-![mi355x_05_four_limiters.svg](/blog/occupancy-mi355x/mi355x_05_four_limiters.svg)
+![The VGPR, SGPR, LDS and workgroup limiters, two expressed per SIMD and two per CU.](/blog/occupancy-mi355x/mi355x_05_four_limiters.svg "Four limiters, lowest wins. Two are counted per SIMD and two per CU, and that unit mismatch is where hand-math usually drifts from the profiler.")
 
 ### The unit mismatch that trips everyone up
 
@@ -161,7 +161,7 @@ CDNA4 (MI355X, 160 KB LDS)
 
 Same kernel, same tile — 25% on CDNA3, 50% on CDNA4. And notice *what* changed: on MI300X the kernel was strangled by LDS; the 160 KB scratchpad on MI355X lifts that ceiling until the VGPR file (4 waves) becomes the constraint instead. More LDS didn't just raise the number — it relocated the bottleneck from the shared scratchpad to the per-lane register file. That relocation — not just the higher number — is what hand-computing the limiters shows you and a bare profiler percentage hides. And it keeps moving: heavier variants of this very kernel compile to 202, 294, even 498 total VGPRs — the 294-and-up tiles start spending real AccVGPRs on top of the regular ones, and occupancy slides to 2, then 1 wave/SIMD. Whether sliding *down* that far is a good trade is what the microbenchmark near the end of this guide measures.
 
-![mi355x_06_worked_example.svg](/blog/occupancy-mi355x/mi355x_06_worked_example.svg)
+![The same MXFP8 GEMM tile evaluated on CDNA3 and CDNA4, LDS-bound on one and register-bound on the other.](/blog/occupancy-mi355x/mi355x_06_worked_example.svg "Same tile, two generations. Tripling LDS does not merely raise the ceiling, it relocates the bottleneck from the shared scratchpad to the per-lane register file.")
 
 ### Granularity: where hand-math drifts from reality
 
@@ -321,7 +321,7 @@ There are two ways to put L/T independent MFMAs in flight:
 
 Both satisfy Little's Law. And here's the CDNA4-specific tension: the MFMA accumulator — whether the compiler parks it in regular VGPRs or in AccVGPRs — comes out of the *same* 512-entry register file as your operands (≤256 of each type, flexibly split; on the small tile above it's 0 AccVGPRs, with the accumulator living in regular VGPRs). So holding several independent accumulator tiles for ILP spends real register budget: it raises the wave's total VGPR count and therefore pushes occupancy **down**. That lower occupancy is the intended trade, not a side effect. ILP and occupancy are two ways to spend one 512-register budget to satisfy Little's Law, and the claim of this section is that spending it on bigger per-wave tiles (ILP) usually beats spending it on more waves (TLP).
 
-![mi355x_07_tlp_vs_ilp.svg](/blog/occupancy-mi355x/mi355x_07_tlp_vs_ilp.svg)
+![Eight waves each issuing a single MFMA, against two waves each issuing several independent MFMAs.](/blog/occupancy-mi355x/mi355x_07_tlp_vs_ilp.svg "Two routes to the same parallelism. TLP spreads independent work across many waves; ILP packs it into few.")
 
 ### Hiding arithmetic latency with fewer waves
 
@@ -359,7 +359,7 @@ mfma_ilp(const v8i* A, const v8i* B, float* out, int iters) {
 
 Everything that matters is in those two nested loops: `ILP` independent accumulators (`acc[i]`, each fed by a distinct `a[i]` so the compiler can't fuse them), and a separate `lds_bytes` launch argument that reserves LDS to cap how many waves co-reside. Here's throughput in absolute PFLOP/s against achieved occupancy, measured on the MI355X with rocprofv3:
 
-![mi355x_12_mfma_ilp.svg](/blog/occupancy-mi355x/mi355x_12_mfma_ilp.svg)
+![Measured throughput against occupancy for MXFP8 MFMA at several ILP levels, with higher ILP reaching peak at lower occupancy.](/blog/occupancy-mi355x/mi355x_12_mfma_ilp.svg "Measured, not modelled: with enough ILP the matrix core stays fed at low occupancy, and the curves peak further left as ILP rises.")
 
 Here is the full sweep — four ILP levels, each walked down in occupancy by reserving LDS:
 
@@ -430,7 +430,7 @@ more waves/SIMD  ->  fewer total VGPRs per wave  ->  smaller accumulator tile
 
 Past the point where you have just enough waves (plus ILP) to cover latency, every additional wave you buy by shrinking the tile is a wave you didn't need — paid for with arithmetic intensity you did. That's how a kernel at 75% occupancy loses to the same kernel reworked to 37.5%: the lower-occupancy version holds a bigger register-resident tile, does more compute per byte moved, and keeps the matrix core saturated through ILP. For MFMA-bound kernels the sweet spot is routinely 2–4 waves/SIMD, not 8.
 
-![mi355x_08_occupancy_trap.svg](/blog/occupancy-mi355x/mi355x_08_occupancy_trap.svg)
+![Chasing occupancy shrinking accumulator tiles and lowering arithmetic intensity, against lower occupancy with bigger tiles raising it.](/blog/occupancy-mi355x/mi355x_08_occupancy_trap.svg "The trap. More waves means fewer registers each, which means smaller accumulator tiles and lower arithmetic intensity. Occupancy goes up and throughput goes down.")
 
 ### So what should you actually optimize?
 
@@ -452,7 +452,7 @@ So here's how to use all of it. Next time you open a kernel:
 4. **If you're latency-bound, ask where the parallelism should come from.** Usually the cheap fix is more ILP (independent accumulator tiles) or wider loads, not more waves.
 5. **If you're matrix-bound and under-fed, spend the register file on the tile, not on waves.** Grow the register-resident tile until just before it spills; let occupancy fall; use the 160 KB LDS for pipeline depth.
 
-![mi355x_10_decision_flowchart.svg](/blog/occupancy-mi355x/mi355x_10_decision_flowchart.svg)
+![A flowchart running from reading real resource usage, through computing the four limiters, to deciding whether occupancy is the problem at all.](/blog/occupancy-mi355x/mi355x_10_decision_flowchart.svg "The workflow occupancy deserves: measure the binary, find the binding limiter, and establish that you are latency-bound before touching anything.")
 
 The kernels that win on MI355X treat the 512-VGPR file and the matrix core as the scarce resources — and treat occupancy as the readout that tells them which knob just moved.
 

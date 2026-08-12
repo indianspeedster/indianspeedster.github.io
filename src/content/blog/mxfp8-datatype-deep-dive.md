@@ -24,7 +24,7 @@ I want to unpack MXFP8 from silicon to software — the bit layout, the math, ho
 
 An 8-bit floating-point format makes an existential choice: how do you split your 8 bits between exponent and mantissa?
 
-![mxfp8_01_bit_layouts.svg](/blog/mxfp8/mxfp8_01_bit_layouts.svg)
+![Bit layouts for FP32, BF16, E5M2 and E4M3 showing sign, exponent and mantissa field widths alongside their ranges.](/blog/mxfp8/mxfp8_01_bit_layouts.svg "The same eight bits split two ways. E5M2 buys range at 25% precision; E4M3 buys precision but tops out at plus or minus 448.")
 
 ### E4M3: Range is the bottleneck
 
@@ -50,7 +50,7 @@ The insight behind MXFP8 is that these two jobs don't need the same density: **m
 
 Split a tensor into contiguous blocks of 32 elements (typically along the inner dimension). Each block gets one shared **scale factor** — an 8-bit power-of-two exponent (E8M0 format: × 2ⁿ, n ranges from −127 to 127). The elements themselves stay in E4M3.
 
-![mxfp8_02_block_scaling.svg](/blog/mxfp8/mxfp8_02_block_scaling.svg)
+![A 320-value tensor split into ten 32-element blocks, each assigned one shared scale, stored as E4M3 data plus an E8M0 scale.](/blog/mxfp8/mxfp8_02_block_scaling.svg "MXFP8 in three steps: partition into blocks of 32, take each block's max to derive a scale, then quantize the block to E4M3 against it.")
 
 The dequantized value for element *i* in block *j* is:
 
@@ -95,7 +95,7 @@ Multiply this with E4M3's native range of [0.00195, 448]:
 
 The effective dynamic range spans ~10⁸¹ — far exceeding FP32's 10³⁸ range. In practice, the per-block scale is chosen as the smallest power-of-two that keeps the block's maximum absolute value under 448, so the effective range is the *union* of the ranges in the table, dominated by whatever the data needs.
 
-![mxfp8_03_dynamic_range.svg](/blog/mxfp8/mxfp8_03_dynamic_range.svg)
+![Log-scale dynamic range bars comparing FP32, BF16, E5M2, E4M3 and MXFP8.](/blog/mxfp8/mxfp8_03_dynamic_range.svg "E4M3 alone spans plus or minus 448. Multiplying by a per-block E8M0 scale restores FP32-like reach: the range comes from the scale, the precision from the data.")
 
 ### The quantization algorithm
 
@@ -161,7 +161,7 @@ MXFP8 A [M×K]    MXFP8 B [K×N]     Block scales
             BF16/FP32 C [M×N]
 ```
 
-![mxfp8_04_gemm_dataflow.svg](/blog/mxfp8/mxfp8_04_gemm_dataflow.svg)
+![MXFP8 matrices moving from HBM through on-the-fly dequantization into the MFMA matrix core.](/blog/mxfp8/mxfp8_04_gemm_dataflow.svg "Where dequantization actually happens. Scales are applied inside the matrix-core datapath, so the widened values never occupy HBM or registers.")
 
 The dequantization happens on-the-fly inside the matrix core — there's no intermediate MXFP8→FP32 expansion step in HBM. The matrix core loads the packed MXFP8 blocks, unpacks the E4M3 elements and their shared scales, combines the A-scale × B-scale per output element, and feeds the multiplier array. This is the same silicon that handles FP16 and BF16 MFMA; the MXFP8 path simply packs *twice as many elements* per load.
 
@@ -206,7 +206,7 @@ It helps to place MXFP8 alongside the other reduced-precision formats:
 
 **The key differentiator:** MXFP8 uses E8M0 (power-of-two) scales on 32-element blocks. Block FP8 uses FP32 scales on 128-element blocks — 4× coarser granularity and 4× more scale storage. Per-tensor FP8 is the crudest: one scale for the entire tensor, vulnerable to the single-outlier problem.
 
-![mxfp8_05_scale_locality.svg](/blog/mxfp8/mxfp8_05_scale_locality.svg)
+![A single outlier degrading precision across an entire tensor under per-tensor scaling, across one row under per-token scaling, and across 32 elements under MXFP8.](/blog/mxfp8/mxfp8_05_scale_locality.svg "The real argument for small blocks: scale granularity decides how far one outlier's damage spreads. MXFP8 caps the radius at 32 elements.")
 
 ---
 
