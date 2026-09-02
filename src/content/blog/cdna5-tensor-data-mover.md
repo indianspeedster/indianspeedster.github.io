@@ -1,5 +1,5 @@
 ---
-title: "The Tensor Data Mover: How CDNA5 Moves Tiles Without Touching a VGPR"
+title: "Inside the CDNA5 Tensor Data Mover"
 description: "CDNA5 adds a dedicated DMA engine that walks up-to-5D tensors and lands tiles straight in LDS, ignoring the EXEC mask and addressing nothing per lane. What the D# descriptor holds, how tile addressing and out-of-bounds clamping work, LDS padding for bank conflicts and transpose, cluster multicast, iteration and gather, and how TENSORcnt lets the copy overlap the math."
 date: 2026-09-02
 tags: ["GPU", "AMD", "CDNA5", "kernels", "TDM", "LDS", "GEMM"]
