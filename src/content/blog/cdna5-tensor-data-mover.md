@@ -14,7 +14,7 @@ This post is a close reading of §10.11 of the *"CDNA5" Instruction Set Architec
 
 > **TL;DR.** TDM is a per-SIMD-pair DMA engine driven by a **Tensor DMA Descriptor (D#)** built out of 12 or 20 SGPRs. Two instructions — `TENSOR_LOAD_TO_LDS` and `TENSOR_STORE_FROM_LDS` — hand it that descriptor and return immediately; completion is tracked with a new counter, `TENSORcnt`, drained by `S_WAIT_TENSORCNT`. The descriptor describes a tensor of up to **5 dimensions** and a tile within it, and the engine handles the address walk, out-of-bounds clamping (reads return zero, writes are dropped), optional **LDS padding** to kill bank conflicts or set up a transpose, **multicast** of one tile into the LDS of up to 16 workgroups in a cluster, **iteration** over strided rows, and a 2D **gather/scatter** mode with up to 16 row indices per instruction. It can also fire an LDS async-barrier arrive on completion, so consumer waves can be woken without the producer polling. The whole point is that the tile for iteration *n+1* moves while the matrix core chews on tile *n*.
 
-![Overview of the CDNA5 Tensor Data Mover: its position beside the SIMDs and LDS, the Tensor DMA Descriptor fields, the global-to-LDS tile walk, 2D address generation, the global to LDS to WMMA dataflow, cluster multicast, and a timeline of loads overlapping compute.](/blog/cdna5-tdm/cdna5_tdm_overview.png "The whole feature on one page. Everything below is a walk through these eight panels in the order the ISA manual presents them. One correction to the top-left diagram: the manual places a TDM at each pair of SIMDs, not one per compute unit.")
+Nine diagrams below carry the load; the prose around each one says what it is showing and which part of the manual it comes from. Every figure is hand-drawn in Excalidraw, and the `.excalidraw` source sits next to the `.svg` in [`public/blog/cdna5-tdm/`](https://github.com/indianspeedster/indianspeedster.github.io/tree/main/public/blog/cdna5-tdm) if you want to pull one apart or reuse it.
 
 > **This is a documentation read, not a benchmark.** Everything below is derived from AMD's published CDNA5 ISA manual. I have not run a single instruction of this on hardware — CDNA5 parts weren't in my hands when I wrote this. Where I say something is fast, I mean the architecture is built so that it should be; where I extrapolate beyond what the manual states, I say so. Nothing here is endorsed or reviewed by AMD, and where I flag something as a spec ambiguity that's my reading, not an official erratum.
 
@@ -44,6 +44,10 @@ That sentence is the entire pitch. A TDM instruction is closer to a scalar instr
 
 The cost structure inverts accordingly. The per-lane paths get more expensive as the tile grows, because you issue more instructions. TDM has a fixed setup cost — you have to populate 12 or 20 SGPRs — that is amortized over the whole tile, and if the tile shape is loop-invariant you populate them once outside the loop and re-issue the instruction with an updated base address each iteration.
 
+![Three columns comparing the VGPR round trip, async global-to-LDS copies and the Tensor Data Mover, each showing the path from global memory down to LDS and the instruction, register and counter cost.](/blog/cdna5-tdm/tdm_01_three_paths.svg "The three paths differ in where the data stops on its way to LDS. The VGPR round trip parks it in the register file and pays a second instruction to push it out again. The async copy skips the register file but still computes one address per lane. TDM takes neither: the shape of the transfer lives in a descriptor, so the instruction count stops scaling with the tile.")
+
+Read the middle row as the real distinction. It is not that TDM is faster at moving a given 128 bits — it is that the first two columns make the *wave* responsible for addressing, and the third does not.
+
 Here is the same idea as a table:
 
 | | VGPR round trip | Async to LDS | TDM |
@@ -68,6 +72,8 @@ If you have worked with Hopper's Tensor Memory Accelerator, the shape of this wi
 
 > Each pair of SIMDs connects to the WGP$ and a Tensor Data Mover (TDM) that can move large blocks of structured data between external memory and LDS.
 
+![A workgroup processor containing two SIMD pairs, each with its own Tensor Data Mover beneath it, both writing into a shared LDS and WGP cache block, with a bidirectional path to global memory.](/blog/cdna5-tdm/tdm_02_where_it_lives.svg "Two SIMD pairs, two TDMs, one LDS. The engine sits between the SIMDs that issue descriptors and the LDS that receives tiles, and it reaches global memory through the ordinary cache hierarchy.")
+
 So the granularity is a **SIMD pair**, not a whole WGP and not a single SIMD. That matters for a mental model of contention: waves on the two SIMDs sharing a TDM share its issue bandwidth, and the manual notes there are config registers (`TDM_CONTROL`) governing "arbitration and TDM policies" — the arbitration exists because multiple waves will be queueing descriptors at one engine. The manual doesn't document the policy knobs, so I won't guess at them.
 
 The destination is the LDS half of the WGP's local memory unit. §11.1 gives the budget: 320 KB of LDS and 64 KB of WGP$ sharing the same physical array, split into **64 banks of 4 bytes each**. Hold on to the bank count; it comes back in Part 3 when we get to padding.
@@ -91,6 +97,8 @@ They are encoded in the VIMAGE format, but almost every VIMAGE field is repurpos
 | `VADDR3` | SGPR base of a 4-SGPR block: D# group 3, or `NULL` |
 | `VADDR4` | unused — set to `NULL` (`0x7C`) |
 | `SCOPE`, `TH`, `NV` | memory scope, temporal hint, non-volatile |
+
+![The four descriptor groups laid out as columns — group 0 with four SGPRs, group 1 with eight, groups 2 and 3 with four each — listing their fields, plus callouts showing how iterate_enable and gather_mode reinterpret groups 2 and 3.](/blog/cdna5-tdm/tdm_03_descriptor.svg "The D# in full. The two callouts on the right are the part that makes this a tagged union rather than a struct: turning on iteration or gather silently changes what the group 2 and 3 registers mean.")
 
 Add it up: a 2D transfer needs groups 0 and 1, which is **12 SGPRs**; anything up to 5D needs all four groups, which is **20 SGPRs**. `VADDR2` and `VADDR3` must both be `NULL` or both be non-`NULL` — you cannot supply group 2 without group 3. If you do pass `NULL`, the effect is defined as though you had pointed at a block of zeroed SGPRs, and the manual explicitly permits pointing `VADDR2` and `VADDR3` at the *same* SGPR block if you need group 3 to be a copy of group 2.
 
@@ -133,6 +141,8 @@ The **tile** is the sub-region you actually want moved, described by `tile_dim[0
 And then there is the field that catches everyone:
 
 > `global_addr` — Global memory address of the start of **the tile within the tensor** (not the start of the tensor).
+
+![A grid representing a 2D tensor with two shaded padding columns on the right, a blue tile highlighted inside it, a red dot marking where global_addr points, and brackets labelling tensor_dim0, tensor_dim0_stride, tile_dim0 and tile_dim1.](/blog/cdna5-tdm/tdm_04_tensor_tile.svg "tensor_dim0 is how much real data a row holds; tensor_dim0_stride is how far apart rows actually are, which is how padded and sub-region layouts get described. The red dot is the field that moves as you step the tile.")
 
 `global_addr` points at the tile's first element, not the tensor's origin. `tensor_dim` exists purely so the engine knows where the *tensor* ends for bounds-checking purposes. Which means that stepping a tile across a matrix is done by bumping `global_addr` — two SGPRs of arithmetic between iterations — while every other field stays put. That is a deliberate and rather nice piece of design: the loop-varying part of the descriptor is one 57-bit field.
 
@@ -198,11 +208,15 @@ This is my favorite part of the design, and it is easy to skim past:
 
 > Reads from portions of a tile that extend beyond the right (positive address) end of a tensor dimension in global memory return zero, and writes to those portions of the tile are dropped.
 
+![Two panels, each showing a tile straddling the right and bottom edge of a tensor. On the load side the cells outside the tensor are filled with zeros; on the store side they are crossed out to show the writes being dropped.](/blog/cdna5-tdm/tdm_05_out_of_bounds.svg "The same edge tile under a load and under a store. Neither faults, neither needs a predicated slow path, and neither can touch memory belonging to a neighbouring tile.")
+
 Ragged edges are handled in hardware, with the *right* semantics. A GEMM whose M or N is not a multiple of the tile size normally needs either a separate epilogue kernel, a predicated slow path, or pre-padded buffers. With TDM you issue the same descriptor for the edge tile, the engine zero-fills the overhang, and the zeros contribute nothing to the accumulation. Stores get the mirror-image treatment: the out-of-range writes are simply dropped, so you cannot corrupt a neighbour by storing a full tile over a partial region.
 
 Two caveats. It is one-sided — "the right (positive address) end" — so this protects you from running off the end, not from a negative or underflowing `global_addr`. And it is checked against `tensor_dim`, which means `tensor_dim` has to be honest. If you set it to the tile size out of convenience, you have disabled the feature.
 
 ### LDS padding: bank conflicts and transposes
+
+![Two panels of five LDS rows with bank numbers in each cell. Without padding every row starts at bank 0, highlighted as a red column. With one DWORD of padding per row the starting banks step 0, 1, 2, 3, 4 down a green diagonal.](/blog/cdna5-tdm/tdm_06_lds_padding.svg "Why padding exists. Densely packed rows put every row start in the same bank, so a column access serializes 64 ways. One DWORD of skew per row spreads those starts across banks — and the copy engine inserts it for free, mid-transfer.")
 
 The last two lines of the pseudocode are the padding mechanism, and they solve a specific, familiar problem.
 
@@ -235,6 +249,8 @@ Three modes sit on top of the basic copy, each flipped on by a descriptor bit.
 §2.3 introduces **workgroup clusters** — up to 16 workgroups scheduled onto the same shader engine, each on its own WGP, able to synchronize through a cluster-wide barrier. §10.7 explains why you would want that, in one sentence:
 
 > In GEMM applications, it is common to have multiple workgroups request the same data from memory.
+
+![A single global memory read entering the TDM, which fans the same tile out to the LDS of four workgroups inside a dashed cluster boundary, annotated as scaling to sixteen.](/blog/cdna5-tdm/tdm_07_multicast.svg "One read of the shared operand, N copies delivered. The mask in the descriptor picks which workgroups of the cluster receive it, and the engine switches from GLOBAL_LOAD_ASYNC to CLUSTER_LOAD_ASYNC to do it.")
 
 If sixteen workgroups are each computing a different output tile in the same row band, they all need the same A-panel. Sixteen separate reads of the same bytes is a waste of a scarce resource. So TDM can broadcast:
 
@@ -270,6 +286,8 @@ The most surprising mode. Set `Gather Mode` in group 0, and descriptor groups 2 
 - 32-bit indices: 8 rows per instruction.
 
 `tile_dim1` is redefined to say how many of those indices are valid. Each row is fetched as `height=1 by width=tile_dim0`. `tile_dim2` and `tile_dim1_stride` are ignored. `tensor_dim1` still does bounds checking as usual — so an out-of-range index gives you a zero-filled row rather than a fault.
+
+![A 2D tensor with four non-adjacent rows highlighted, an index list held in descriptor groups 2 and 3, and those four rows landing compacted and adjacent in LDS.](/blog/cdna5-tdm/tdm_08_gather.svg "Gather mode spends the group 2 and 3 registers on row indices instead of tensor dimensions. Scattered rows in memory arrive contiguous in LDS, in the order the index list names them.")
 
 That is an embedding-table lookup, or an MoE expert-row gather, expressed as a single instruction. And because the same index list applies to `TENSOR_STORE_FROM_LDS`, you get **scatter** for free: the indices generate the destination addresses instead of the source ones.
 
@@ -320,6 +338,8 @@ loop:
   TENSOR_LOAD_TO_LDS  D#               // issue tile n+2 into the buffer
   s_cbranch   loop                     // just freed
 ```
+
+![A timeline with a TDM lane showing four back-to-back tile loads and a matrix core lane showing three compute blocks, each compute block starting one slot after its load and separated by an S_WAIT_TENSORCNT 1 marker.](/blog/cdna5-tdm/tdm_09_pipeline.svg "The steady state. Each compute block runs against a tile that landed an iteration ago while the engine is already two tiles ahead, and the only synchronization is a counter threshold.")
 
 `S_WAIT_TENSORCNT 1` is the crux: it waits for the older transfer while explicitly permitting the newer one to keep running. The matrix core works on tile *n* while the DMA engine fetches *n+2*, the wave's per-iteration overhead is two scalar adds and one instruction issue, and the register file holds accumulators rather than in-flight data. Deeper pipelines are a matter of more LDS buffers and a larger wait threshold; the 6-bit counter is not going to be what stops you.
 

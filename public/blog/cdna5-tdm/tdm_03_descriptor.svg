@@ -1,0 +1,59 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="624" viewBox="0 0 1000 624" font-family="system-ui, -apple-system, sans-serif">
+<defs><marker id="ah" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L8,3 L0,6 Z" fill="#1e1e1e"/></marker><marker id="ahs" markerWidth="10" markerHeight="10" refX="0" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M8,0 L0,3 L8,6 Z" fill="#1e1e1e"/></marker></defs>
+<rect width="1000" height="624" fill="#ffffff"/>
+<text x="40" y="44.7" font-size="26" text-anchor="start" fill="#1e1e1e" font-weight="bold">The Tensor DMA Descriptor (D#): 20 SGPRs, four groups</text>
+<rect x="40" y="96" width="185" height="56" rx="12" fill="#a5d8ff" stroke="#1e1e1e" stroke-width="2"/>
+<text x="132" y="118.6" font-size="13.5" text-anchor="middle" fill="#1e1e1e" font-weight="bold">Group 0</text>
+<text x="132" y="135.47" font-size="13.5" text-anchor="middle" fill="#1e1e1e" font-weight="bold">VADDR0 · 4 SGPRs</text>
+<rect x="40" y="164" width="185" height="226" rx="12" fill="#ffffff" stroke="#868e96" stroke-width="2"/>
+<text x="53" y="191" font-size="12" text-anchor="start" fill="#495057" font-weight="normal" font-family="ui-monospace, SFMono-Regular, Menlo, monospace">lds_addr</text>
+<text x="53" y="214" font-size="12" text-anchor="start" fill="#495057" font-weight="normal" font-family="ui-monospace, SFMono-Regular, Menlo, monospace">global_addr</text>
+<text x="53" y="237" font-size="12" text-anchor="start" fill="#495057" font-weight="normal" font-family="ui-monospace, SFMono-Regular, Menlo, monospace">gather_mode, index_size</text>
+<text x="53" y="260" font-size="12" text-anchor="start" fill="#495057" font-weight="normal" font-family="ui-monospace, SFMono-Regular, Menlo, monospace">scope, th</text>
+<text x="53" y="283" font-size="12" text-anchor="start" fill="#495057" font-weight="normal" font-family="ui-monospace, SFMono-Regular, Menlo, monospace">type = 2</text>
+<text x="53" y="306" font-size="12" text-anchor="start" fill="#495057" font-weight="normal" font-family="ui-monospace, SFMono-Regular, Menlo, monospace">count, is_restore, is_store</text>
+<rect x="285" y="96" width="185" height="56" rx="12" fill="#b2f2bb" stroke="#1e1e1e" stroke-width="2"/>
+<text x="377" y="118.6" font-size="13.5" text-anchor="middle" fill="#1e1e1e" font-weight="bold">Group 1</text>
+<text x="377" y="135.47" font-size="13.5" text-anchor="middle" fill="#1e1e1e" font-weight="bold">VADDR1 · 8 SGPRs</text>
+<rect x="285" y="164" width="185" height="226" rx="12" fill="#ffffff" stroke="#868e96" stroke-width="2"/>
+<text x="298" y="191" font-size="12" text-anchor="start" fill="#495057" font-weight="normal" font-family="ui-monospace, SFMono-Regular, Menlo, monospace">workgroup_mask</text>
+<text x="298" y="214" font-size="12" text-anchor="start" fill="#495057" font-weight="normal" font-family="ui-monospace, SFMono-Regular, Menlo, monospace">data_size</text>
+<text x="298" y="237" font-size="12" text-anchor="start" fill="#495057" font-weight="normal" font-family="ui-monospace, SFMono-Regular, Menlo, monospace">atomic_barrier_enable</text>
+<text x="298" y="260" font-size="12" text-anchor="start" fill="#495057" font-weight="normal" font-family="ui-monospace, SFMono-Regular, Menlo, monospace">iterate_enable</text>
+<text x="298" y="283" font-size="12" text-anchor="start" fill="#495057" font-weight="normal" font-family="ui-monospace, SFMono-Regular, Menlo, monospace">pad_enable, pad_interval</text>
+<text x="298" y="306" font-size="12" text-anchor="start" fill="#495057" font-weight="normal" font-family="ui-monospace, SFMono-Regular, Menlo, monospace">pad_amount</text>
+<text x="298" y="329" font-size="12" text-anchor="start" fill="#495057" font-weight="normal" font-family="ui-monospace, SFMono-Regular, Menlo, monospace">tensor_dim0, tensor_dim1</text>
+<text x="298" y="352" font-size="12" text-anchor="start" fill="#495057" font-weight="normal" font-family="ui-monospace, SFMono-Regular, Menlo, monospace">tile_dim0, tile_dim1, tile_dim2</text>
+<text x="298" y="375" font-size="12" text-anchor="start" fill="#495057" font-weight="normal" font-family="ui-monospace, SFMono-Regular, Menlo, monospace">dim0_stride, dim1_stride</text>
+<rect x="530" y="96" width="185" height="56" rx="12" fill="#ffec99" stroke="#1e1e1e" stroke-width="2"/>
+<text x="622" y="118.6" font-size="13.5" text-anchor="middle" fill="#1e1e1e" font-weight="bold">Group 2</text>
+<text x="622" y="135.47" font-size="13.5" text-anchor="middle" fill="#1e1e1e" font-weight="bold">VADDR2 · 4 SGPRs</text>
+<rect x="530" y="164" width="185" height="226" rx="12" fill="#ffffff" stroke="#868e96" stroke-width="2"/>
+<text x="543" y="191" font-size="12" text-anchor="start" fill="#495057" font-weight="normal" font-family="ui-monospace, SFMono-Regular, Menlo, monospace">tensor_dim2</text>
+<text x="543" y="214" font-size="12" text-anchor="start" fill="#495057" font-weight="normal" font-family="ui-monospace, SFMono-Regular, Menlo, monospace">tensor_dim3</text>
+<text x="543" y="237" font-size="12" text-anchor="start" fill="#495057" font-weight="normal" font-family="ui-monospace, SFMono-Regular, Menlo, monospace">tensor_dim2_stride</text>
+<text x="543" y="260" font-size="12" text-anchor="start" fill="#495057" font-weight="normal" font-family="ui-monospace, SFMono-Regular, Menlo, monospace">tile_dim3</text>
+<rect x="775" y="96" width="185" height="56" rx="12" fill="#ffd8a8" stroke="#1e1e1e" stroke-width="2"/>
+<text x="867" y="118.6" font-size="13.5" text-anchor="middle" fill="#1e1e1e" font-weight="bold">Group 3</text>
+<text x="867" y="135.47" font-size="13.5" text-anchor="middle" fill="#1e1e1e" font-weight="bold">VADDR3 · 4 SGPRs</text>
+<rect x="775" y="164" width="185" height="226" rx="12" fill="#ffffff" stroke="#868e96" stroke-width="2"/>
+<text x="788" y="191" font-size="12" text-anchor="start" fill="#495057" font-weight="normal" font-family="ui-monospace, SFMono-Regular, Menlo, monospace">tensor_dim3_stride</text>
+<text x="788" y="214" font-size="12" text-anchor="start" fill="#495057" font-weight="normal" font-family="ui-monospace, SFMono-Regular, Menlo, monospace">tensor_dim4</text>
+<text x="788" y="237" font-size="12" text-anchor="start" fill="#495057" font-weight="normal" font-family="ui-monospace, SFMono-Regular, Menlo, monospace">tile_dim4</text>
+<text x="788" y="260" font-size="12" text-anchor="start" fill="#495057" font-weight="normal" font-family="ui-monospace, SFMono-Regular, Menlo, monospace">reserved</text>
+<rect x="40" y="412" width="430" height="56" rx="12" fill="#f8f9fa" stroke="#868e96" stroke-width="2"/>
+<text x="255" y="434.6" font-size="13.5" text-anchor="middle" fill="#495057" font-weight="normal">2D tensor:  groups 0 + 1 only  =  12 SGPRs</text>
+<text x="255" y="451.48" font-size="13.5" text-anchor="middle" fill="#495057" font-weight="normal">up to 5D:  all four groups  =  20 SGPRs</text>
+<text x="255" y="500.8" font-size="13" text-anchor="middle" fill="#868e96" font-weight="normal">VADDR2 and VADDR3 must both be NULL or both non-NULL.</text>
+<text x="255" y="517.05" font-size="13" text-anchor="middle" fill="#868e96" font-weight="normal">global_addr points at the tile, not at the tensor origin.</text>
+<rect x="530" y="412" width="430" height="86" rx="12" fill="#fff9db" stroke="#e8590c" stroke-width="1.5"/>
+<text x="745" y="435.2" font-size="12" text-anchor="middle" fill="#e8590c" font-weight="normal" font-family="ui-monospace, SFMono-Regular, Menlo, monospace">iterate_enable = 1  overloads group 2:</text>
+<text x="745" y="450.2" font-size="12" text-anchor="middle" fill="#e8590c" font-weight="normal" font-family="ui-monospace, SFMono-Regular, Menlo, monospace">tensor_dim3 → lds_addr_increment</text>
+<text x="745" y="465.2" font-size="12" text-anchor="middle" fill="#e8590c" font-weight="normal" font-family="ui-monospace, SFMono-Regular, Menlo, monospace">tensor_dim2_stride → global_addr_increment</text>
+<text x="745" y="480.2" font-size="12" text-anchor="middle" fill="#e8590c" font-weight="normal" font-family="ui-monospace, SFMono-Regular, Menlo, monospace">tile_dim3 → iterate_count</text>
+<rect x="530" y="514" width="430" height="62" rx="12" fill="#fff5f5" stroke="#c92a2a" stroke-width="1.5"/>
+<text x="745" y="540.2" font-size="12" text-anchor="middle" fill="#c92a2a" font-weight="normal" font-family="ui-monospace, SFMono-Regular, Menlo, monospace">gather_mode = 1  replaces groups 2 and 3 entirely</text>
+<text x="745" y="555.2" font-size="12" text-anchor="middle" fill="#c92a2a" font-weight="normal" font-family="ui-monospace, SFMono-Regular, Menlo, monospace">with 8 (32-bit) or 16 (16-bit) row indices</text>
+<text x="500" y="596.6" font-size="13.5" text-anchor="middle" fill="#495057" font-weight="normal">Four mode bits — iterate_enable, gather_mode, pad_enable and a non-zero workgroup_mask — change what the other</text>
+<text x="500" y="613.48" font-size="13.5" text-anchor="middle" fill="#495057" font-weight="normal">fields mean. The descriptor is closer to a tagged union than to a flat struct.</text>
+</svg>

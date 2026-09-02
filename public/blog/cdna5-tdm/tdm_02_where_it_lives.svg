@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="940" height="566" viewBox="0 0 940 566" font-family="system-ui, -apple-system, sans-serif">
+<defs><marker id="ah" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L8,3 L0,6 Z" fill="#1e1e1e"/></marker><marker id="ahs" markerWidth="10" markerHeight="10" refX="0" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M8,0 L0,3 L8,6 Z" fill="#1e1e1e"/></marker></defs>
+<rect width="940" height="566" fill="#ffffff"/>
+<text x="40" y="44.7" font-size="26" text-anchor="start" fill="#1e1e1e" font-weight="bold">Where the TDM sits: one engine per pair of SIMDs</text>
+<rect x="40" y="92" width="600" height="410" rx="12" fill="#f1f3f5" stroke="#868e96" stroke-width="2"/>
+<text x="56" y="118" font-size="15" text-anchor="start" fill="#495057" font-weight="bold">Workgroup Processor (WGP)</text>
+<rect x="68" y="136" width="260" height="92" rx="12" fill="#ffffff" stroke="#868e96" stroke-width="2" stroke-dasharray="6 5"/>
+<text x="198" y="158" font-size="13.5" text-anchor="middle" fill="#868e96" font-weight="normal">SIMD pair 0</text>
+<rect x="80" y="166" width="114" height="48" rx="12" fill="#a5d8ff" stroke="#1e1e1e" stroke-width="2"/>
+<text x="137.0" y="193.15" font-size="14" text-anchor="middle" fill="#1e1e1e" font-weight="normal">SIMD 0</text>
+<rect x="202" y="166" width="114" height="48" rx="12" fill="#a5d8ff" stroke="#1e1e1e" stroke-width="2"/>
+<text x="259.0" y="193.15" font-size="14" text-anchor="middle" fill="#1e1e1e" font-weight="normal">SIMD 1</text>
+<line x1="198" y1="228" x2="198" y2="272" stroke="#1e1e1e" stroke-width="2" marker-end="url(#ah)" />
+<rect x="68" y="272" width="260" height="62" rx="12" fill="#d0bfff" stroke="#1e1e1e" stroke-width="2"/>
+<text x="198.0" y="297.4" font-size="14" text-anchor="middle" fill="#1e1e1e" font-weight="bold">TDM 0</text>
+<text x="198.0" y="314.9" font-size="14" text-anchor="middle" fill="#1e1e1e" font-weight="bold">Tensor Data Mover</text>
+<line x1="198" y1="334" x2="198" y2="392" stroke="#1e1e1e" stroke-width="2" marker-end="url(#ah)" />
+<rect x="352" y="136" width="260" height="92" rx="12" fill="#ffffff" stroke="#868e96" stroke-width="2" stroke-dasharray="6 5"/>
+<text x="482" y="158" font-size="13.5" text-anchor="middle" fill="#868e96" font-weight="normal">SIMD pair 1</text>
+<rect x="364" y="166" width="114" height="48" rx="12" fill="#a5d8ff" stroke="#1e1e1e" stroke-width="2"/>
+<text x="421.0" y="193.15" font-size="14" text-anchor="middle" fill="#1e1e1e" font-weight="normal">SIMD 2</text>
+<rect x="486" y="166" width="114" height="48" rx="12" fill="#a5d8ff" stroke="#1e1e1e" stroke-width="2"/>
+<text x="543.0" y="193.15" font-size="14" text-anchor="middle" fill="#1e1e1e" font-weight="normal">SIMD 3</text>
+<line x1="482" y1="228" x2="482" y2="272" stroke="#1e1e1e" stroke-width="2" marker-end="url(#ah)" />
+<rect x="352" y="272" width="260" height="62" rx="12" fill="#d0bfff" stroke="#1e1e1e" stroke-width="2"/>
+<text x="482.0" y="297.4" font-size="14" text-anchor="middle" fill="#1e1e1e" font-weight="bold">TDM 1</text>
+<text x="482.0" y="314.9" font-size="14" text-anchor="middle" fill="#1e1e1e" font-weight="bold">Tensor Data Mover</text>
+<line x1="482" y1="334" x2="482" y2="392" stroke="#1e1e1e" stroke-width="2" marker-end="url(#ah)" />
+<rect x="68" y="392" width="544" height="86" rx="12" fill="#b2f2bb" stroke="#1e1e1e" stroke-width="2"/>
+<text x="340.0" y="429.0" font-size="15" text-anchor="middle" fill="#1e1e1e" font-weight="normal">LDS  +  WGP$   (one physical array)</text>
+<text x="340.0" y="447.75" font-size="15" text-anchor="middle" fill="#1e1e1e" font-weight="normal">320 KB LDS  ·  64 KB WGP$  ·  64 banks × 4 B</text>
+<rect x="756" y="238" width="168" height="134" rx="12" fill="#ffd8a8" stroke="#1e1e1e" stroke-width="2"/>
+<text x="840.0" y="298.6" font-size="16" text-anchor="middle" fill="#1e1e1e" font-weight="normal">Global memory</text>
+<text x="840.0" y="318.6" font-size="16" text-anchor="middle" fill="#1e1e1e" font-weight="normal">(HBM)</text>
+<line x1="640" y1="300" x2="756" y2="300" stroke="#1e1e1e" stroke-width="2" marker-start="url(#ahs)" marker-end="url(#ah)" />
+<text x="698" y="288" font-size="12.5" text-anchor="middle" fill="#868e96" font-weight="normal">via GL1 / GL2</text>
+<text x="470" y="528.6" font-size="13.5" text-anchor="middle" fill="#495057" font-weight="normal">§1.2.2.1: “each pair of SIMDs connects to the WGP$ and a Tensor Data Mover” — the engine is per SIMD pair, so the</text>
+<text x="470" y="545.48" font-size="13.5" text-anchor="middle" fill="#495057" font-weight="normal">two SIMDs sharing one TDM also share its issue bandwidth and its arbitration (TDM_CONTROL).</text>
+</svg>
