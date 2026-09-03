@@ -204,7 +204,9 @@ There's one more piece for the common case where one wave fetches and many waves
 
 All of the above is what the manual promises. Here is what an MI450 (gfx1250, 256 CUs, ROCm 10.1) does when you ask it.
 
-The benchmark fills LDS as fast as it can, three ways: one transfer at a time, two in flight using the counter threshold, and a hand-written copy loop where all 256 threads move float4s. Every workgroup sweeps its own 4 MB slice of a 16 GB buffer so nothing is served out of cache. For reference, the best plain streaming read I could get on this machine is about 10,900 GB/s, and the best write about 10,600 GB/s.
+One caveat on the absolute numbers before the table. The machine I had access to is running its memory at 1.90 GHz on a 24,576-bit bus, which puts its ceiling at about 11,700 GB/s. A production MI450 is specified around 20.7 TB/s, which needs roughly 3.37 GHz on that bus, so this part is at some 56% of production memory speed. Its core and fabric clocks are similarly low, at 1.1 GHz with only two levels in the table, which is what an early-silicon configuration looks like. Treat every GB/s figure below as belonging to this machine rather than to the product, and note that the ratios between the three methods are unaffected, since they all ran on the same box.
+
+The benchmark fills LDS as fast as it can, three ways: one transfer at a time, two in flight using the counter threshold, and a hand-written copy loop where all 256 threads move float4s. Every workgroup sweeps its own 4 MB slice of a 16 GB buffer so nothing is served out of cache. For reference, the best plain streaming read I could get here is 10,905 GB/s and the best write 10,509 GB/s, against that 11,700 GB/s ceiling, so the reference kernel is already at about 93% of what this configuration can do.
 
 | Tile | One at a time | Two in flight | Copy loop | Pipelining gains |
 |---|---|---|---|---|
@@ -220,7 +222,7 @@ Two things jump out.
 
 **The counter is where the speed is.** Going from "wait for everything" to "wait until only one is outstanding" is worth 1.8x at 1 KB and 2 KB. One small transfer can't cover memory latency on its own; two overlapping ones can. By 8 KB a single transfer is already big enough to saturate and the second one stops helping, which is why the last column falls back to 1.0.
 
-Put differently: with two transfers in flight and a 4 KB tile the engine reaches 10,793 GB/s, which is essentially the 10,900 GB/s roof. A tile copy driven this way does saturate memory. But you only get there by keeping more than one in flight, and that is a property of the wait threshold rather than of the DMA engine.
+Put differently: with two transfers in flight and a 4 KB tile the engine reaches 10,793 GB/s, within a percent of the best the reference kernel manages. A tile copy driven this way does saturate memory. But you only get there by keeping more than one in flight, and that is a property of the wait threshold rather than of the DMA engine.
 
 The same effect shows up in the reference measurement, which is what convinced me it is real. A simple read kernel with no unrolling sits at about 8,900 GB/s however many workgroups you launch; unrolling it so each thread has two loads outstanding takes it to 10,900. Whether you get memory-level parallelism from unrolling a load loop or from a second outstanding tensor transfer, the machine wants more than one request in flight per thread of control.
 
