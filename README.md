@@ -1,6 +1,6 @@
 # indianspeedster.github.io
 
-My personal website — a static [Astro](https://astro.build) site with a dark
+My personal website  a static [Astro](https://astro.build) site with a dark
 theme, an experience timeline, project cards, and a Markdown blog.
 
 ## Develop
