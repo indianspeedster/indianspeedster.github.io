@@ -1,6 +1,6 @@
 ---
 title: "Inside the CDNA5 Tensor Data Mover"
-description: "CDNA5 adds a small DMA engine that copies tiles of a tensor from global memory straight into LDS, without the shader core computing a single address. What it is, how you drive it, and what it measures on an MI450 - including the bounds behaviour that does not work the way the manual reads."
+description: "CDNA5 adds a small DMA engine that copies tiles of a tensor from global memory straight into LDS, without the shader core computing a single address. What it is, how you drive it, how the descriptor describes a copy, and how the counter lets the copy overlap the math. Checked against an MI450."
 date: 2026-09-02
 tags: ["GPU", "AMD", "CDNA5", "kernels", "TDM", "LDS", "GEMM"]
 draft: false
@@ -23,7 +23,7 @@ Some vocabulary first, since the rest of this leans on it:
 
 > **TL;DR.** The Tensor Data Mover is a DMA engine that copies a tile of an array from global memory into LDS. You set up a descriptor in about a dozen SGPRs, issue one instruction, and it does the whole copy on its own while your wave gets on with other work. It handles arrays of up to 5 dimensions, clamps reads and writes that run off the edge, can insert padding to avoid LDS bank conflicts, and can broadcast one tile to as many as 16 workgroups at once. A counter called TENSORcnt tells you when it has finished. The point of all of it: the copy for the next tile happens while the matrix core is still working on this one.
 
-> **Everything below is checked on hardware.** The descriptions come from AMD's published CDNA5 ISA manual, and I then ran them on an MI450 (gfx1250, ROCm 10.1) to see whether the hardware agrees. It mostly does, with one difference that matters, flagged where it comes up. These are my own measurements on one machine, not endorsed or reviewed by AMD.
+> **Everything below is checked on hardware.** The descriptions come from AMD's published CDNA5 ISA manual, and I then built descriptors by hand and ran them on an MI450 (gfx1250, ROCm 10.1) to see whether the hardware agrees. Padding, gather, the bounds handling and the addressing all behaved as documented. This is my own testing on one machine, not endorsed or reviewed by AMD.
 
 ---
 
@@ -73,9 +73,9 @@ TENSOR_STORE_FROM_LDS   ; LDS -> global memory
 
 Neither takes the data as an operand. Instead they point at a descriptor, called the D#, which is just a block of SGPRs you fill in beforehand. A 2D copy needs 12 of them, the full 5D version needs 20.
 
-![The four descriptor groups laid out as columns, group 0 with four SGPRs, group 1 with eight, groups 2 and 3 with four each, listing their fields, plus callouts showing how iterate_enable and gather_mode reinterpret groups 2 and 3.](/blog/cdna5-tdm/tdm_03_descriptor.svg "The D# in full. The two callouts on the right are what makes this a tagged union rather than a struct: turning on iteration or gather quietly changes what the group 2 and 3 registers mean.")
+![A strip of twenty numbered SGPRs coloured into four groups, marked to show that a 2D copy needs only the first twelve, with an arrow from the last eight down to three panels giving their contents under no mode bit, under iterate_enable and under gather_mode.](/blog/cdna5-tdm/tdm_03_descriptor.svg "The descriptor is one block of registers. A 2D copy fills the first twelve and leaves the rest unused; higher dimensions need all twenty. The three panels are the same final eight registers under each mode, which is what makes this closer to a tagged union than a struct.")
 
-Don't try to memorize that. What's worth noticing are the two callouts on the right: a couple of mode bits change what the other registers mean. Turn on iteration or gather and the registers you were using for dimensions now hold something else entirely. It behaves more like a tagged union than a plain struct, which is easy to get wrong when you're filling it in by hand.
+You don't need the field names yet; the appendix lists them. What the picture is for is the shape. The descriptor is one contiguous block of registers, a 2D copy fills only the first twelve, and the last eight do not have a fixed meaning. Two mode bits reinterpret them: turn on iteration and the registers that held the fourth and fifth dimensions become address increments, turn on gather and they become a list of row numbers instead. That is why it behaves more like a tagged union than a plain struct, and why some combinations are mutually exclusive. Iteration borrows the registers a 4D or 5D copy would need, so you cannot have both.
 
 The instruction returns immediately, so you need some way to ask whether the copy has finished. That's a counter called TENSORcnt. It goes up by one when you issue a transfer and down by one when a transfer lands, and S_WAIT_TENSORCNT N blocks until at most N are still outstanding.
 
@@ -91,22 +91,24 @@ This is the part that trips people up, so it's worth going slowly.
 
 The descriptor names two different things. The tensor is the whole array as it sits in memory. The tile is the smaller rectangle you actually want copied.
 
-![A grid representing a 2D tensor with two shaded padding columns on the right, a blue tile highlighted inside it, a red dot marking where global_addr points, and brackets labelling tensor_dim0, tensor_dim0_stride, tile_dim0 and tile_dim1.](/blog/cdna5-tdm/tdm_04_tensor_tile.svg "tensor_dim0 is how much real data a row holds; tensor_dim0_stride is how far apart rows actually are, which is how padded and sub-region layouts get described. The red dot is the field that moves as you step the tile.")
+![A grid with two shaded padding columns on the right and a blue tile inside it. Four measurements are marked: the stride spanning the full row width including the padding, the bound running from the tile to the end of the real data, the tile width and the tile height, with a red dot on the tile's first element labelled global_addr.](/blog/cdna5-tdm/tdm_04_tensor_tile.svg "All four fields on one picture. Two of them are easy to misread: the stride spans the padding as well as the data, and the bound starts at the tile rather than at the left edge of the array.")
 
 Two ideas in that picture do most of the work.
 
-First, a row's length and a row's stride are separate numbers. Length is how much real data a row holds. Stride is how far apart consecutive rows start. Letting the stride be larger is how you describe a tile carved out of a bigger matrix, or an array with gaps between its rows.
+First, how much data there is and how far apart rows start are two separate numbers. The stride is the distance from one row's start to the next, and it can be larger than the data in the row, which is how you describe a tile carved out of a bigger matrix or an array with gaps between its rows.
 
 Second, the starting address points at the tile, not at the array. That catches everyone, and the manual calls it out explicitly:
 
 > global_addr — Global memory address of the start of the tile within the tensor (not the start of the tensor).
 
-The nice consequence is that walking a tile across a matrix means updating exactly one field. Everything else stays as it is, which is why you can set the descriptor up once outside your loop.
+That second point has a consequence you can see in the picture. The engine is only ever told where the tile begins, so the bound it checks against is measured from there as well: it says how much tensor remains from the tile onwards, not how wide the whole array is. The next section is about what that gets you.
+
+Walking a tile across a matrix is therefore cheap: two fields move, global_addr and the bound measured from it, while the tile extents and the strides stay as they are. You build the descriptor once outside the loop and adjust those two.
 
 For a 2D array the engine computes each address like this:
 
 ```c
-address = global_addr + elementSize * (x + y * row_stride)
+address = global_addr + elementSize * (x + y * tensor_dim0_stride)
 ```
 
 Rows get read left to right and stacked into LDS back to back. However scattered the data was in memory, it arrives packed.
@@ -121,16 +123,16 @@ Real matrices aren't neat multiples of your tile size. The last tile in a row ha
 
 The engine handles it. Reads past the end of the array return zero, and writes past the end are thrown away, so the overhang costs you nothing and a full tile stored over a partial region can't scribble on its neighbour.
 
-There's a catch, and it's the one place the hardware surprised me. The bound is counted **from the tile**, not from the start of the array. I tested this by putting a 16-wide tile at column 56 of a 64-wide array and leaving the array width at 64:
+One subtlety is worth spelling out, because it follows from something already said and is easy to skip past. Since global_addr points at the tile rather than at the array, the engine has no way of knowing where the array begins. The bound is therefore measured **from the tile**, and the manual says as much when it notes these fields can describe a sub-portion of a larger tensor. Concretely, with a 16-wide tile at column 56 of a 64-wide array and the width left at 64:
 
 ```text
 tile at column 56, tensor_dim0 = 64, tile_dim0 = 16
 got:  56 57 58 59 60 61 62 63 | 64 65 66 67 68 69 70 71
 ```
 
-Those last eight values are the next row. No zeros. The engine took "this array is 64 wide" to mean 64 elements from where the tile starts, ran off the end of row 56..63 and kept reading straight into row 1.
+Those last eight values are the next row rather than zeros: 64 elements were available from the tile onwards, so nothing was out of bounds. The field means "how much tensor is there from here", which is what it has to mean given where global_addr points.
 
-So you don't get edge handling for free by reusing one descriptor. You have to shrink the width as the tile walks, setting it to what's actually left. Do that and it behaves:
+So the width travels with the tile. Set it to what is left from the current position and edge handling falls out:
 
 ```text
 ragged array, 40 real columns, 16-wide tiles
@@ -139,7 +141,7 @@ col 16, tensor_dim0 = 24:  16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31
 col 32, tensor_dim0 =  8:  32 33 34 35 36 37 38 39 | 0  0  0  0  0  0  0  0
 ```
 
-That last row is the behaviour you want, and it costs one extra scalar subtract per step. Worth knowing before you trust an edge tile.
+That last row is the behaviour you want, and it costs one scalar subtract per step.
 
 The other limit is that it only protects the far end, not a negative or underflowing address.
 
@@ -151,9 +153,9 @@ LDS is split into 64 banks. Roughly: two threads reading different banks at the 
 
 That causes a classic problem. If a tile's rows are packed tightly and the row length lines up badly with 64, every row starts in the same bank. Reading down a column then hits that one bank over and over, and the reads serialize.
 
-![Two panels of five LDS rows with bank numbers in each cell. Without padding every row starts at bank 0, highlighted as a red column. With one DWORD of padding per row the starting banks step 0, 1, 2, 3, 4 down a green diagonal.](/blog/cdna5-tdm/tdm_06_lds_padding.svg "Why padding exists. Densely packed rows put every row start in the same bank, so a column access serializes 64 ways. One DWORD of skew per row spreads those starts across banks, and the copy engine inserts it mid-transfer at no cost.")
+![Two panels. In each, four tile rows are read at column 0 at the same time, with arrows tracing where each read lands in the bank strip below. Without padding all four arrows converge on bank 0. With one DWORD of padding per row the rows are offset and the four arrows reach banks 0, 1, 2 and 3.](/blog/cdna5-tdm/tdm_06_lds_padding.svg "The same four reads under both layouts. Packed rows put every column-0 element in the same bank, so the four are serviced one after another. One wasted slot per row offsets each start by a bank, and the four go together.")
 
-The standard fix is to waste a few bytes at the end of each row so the next one starts somewhere else. By hand that means extra address arithmetic on every store. The Tensor Data Mover will do it for you mid-copy: tell it how often to insert a gap and how big the gap should be, and it skips those slots as it writes.
+The fix is to waste a slot or two at the end of each row so the next one starts in a different bank. Reads down a column then spread across banks instead of piling into one, and they can be serviced together. Doing this by hand means extra address arithmetic on every store; the Tensor Data Mover will do it while it writes. Tell it how often to insert a gap and how big the gap should be, and it skips those slots as it goes.
 
 Two warnings. The settings are encoded rather than literal, so writing 1 doesn't get you 1, and they must both be zero or both be non-zero. And padding only works on the way in, since there's no un-padding on the way back out.
 
@@ -169,9 +171,11 @@ Set a 16-bit mask in the descriptor and one trip to memory delivers the tile int
 
 **Gather.** Flip a mode bit and part of the descriptor stops holding dimensions and starts holding a list of row numbers.
 
-![A 2D tensor with four non-adjacent rows highlighted, an index list held in descriptor groups 2 and 3, and those four rows landing compacted and adjacent in LDS.](/blog/cdna5-tdm/tdm_08_gather.svg "Gather mode spends the group 2 and 3 registers on row indices instead of tensor dimensions. Scattered rows in memory arrive contiguous in LDS, in the order the index list names them.")
+![A tensor of ten rows with three highlighted in different colours, an index list of four entries reading 9, 2, 6, 2, and four LDS rows colour-matched to their sources. Coloured arrows run from each source row through its index entry to its destination, crossing where the order differs from memory order.](/blog/cdna5-tdm/tdm_08_gather.svg "Follow the colours. The list reads 9, 2, 6, 2, so row 9 lands first and row 2 lands twice: the destination order is the order of the list, not the order of memory, and nothing stops an index repeating.")
 
-Up to 16 scattered rows get pulled together into LDS in one instruction, which is exactly the shape of an embedding lookup or a mixture-of-experts gather. One catch: the out-of-bounds protection from earlier is only guaranteed when the indices are in non-decreasing order. Since gather exists for cases where indices come from data, either sort them or check them yourself.
+Up to 16 scattered rows get pulled together into LDS in one instruction, which is exactly the shape of an embedding lookup or a mixture-of-experts gather. Two things follow from the list being read in order. The rows arrive in the order you named them rather than in memory order, and an index may repeat, so the same row can be delivered to several LDS slots from one instruction.
+
+One catch: the out-of-bounds protection from earlier is only guaranteed when the indices are in non-decreasing order. Since gather exists for cases where indices come from data, either sort them or check them yourself.
 
 There's a third mode, iteration, which replays one descriptor several times to pull out every Nth row. Useful, though it borrows registers from the higher dimensions, so it can't be combined with a 4D or 5D copy.
 
@@ -181,7 +185,7 @@ There's a third mode, iteration, which replays one descriptor several times to p
 
 Here is what all of it is for.
 
-![A timeline with a TDM lane showing four back-to-back tile loads and a matrix core lane showing three compute blocks, each compute block starting one slot after its load and separated by an S_WAIT_TENSORCNT 1 marker.](/blog/cdna5-tdm/tdm_09_pipeline.svg "The steady state. Each compute block runs against a tile that landed an iteration ago while the engine is already two tiles ahead, and the only synchronization is a counter threshold.")
+![A two-lane timeline. The TDM lane loads tiles 0 to 3, alternating between buffers A and B. The matrix core lane computes tiles 0 to 2, each starting one slot after its load finishes, with a vertical arrow and an S_WAIT_TENSORCNT 1 marker joining them. One slot is highlighted to show a load and a compute running at the same time.](/blog/cdna5-tdm/tdm_09_pipeline.svg "Read a column rather than a row. In the highlighted slot the engine is fetching tile 2 while the matrix core works on tile 1, which is the whole point. The arrows mark where each compute waits for its own tile, and the A and B labels show why the arriving tile never lands on the one being read.")
 
 Start two copies before the loop. Inside the loop, wait for the older one, do the math on the tile that just arrived, bump the address, and fire off another copy. The engine stays a tile or two ahead of the matrix core.
 
@@ -189,7 +193,8 @@ Start two copies before the loop. Inside the loop, wait for the older one, do th
 loop:
   S_WAIT_TENSORCNT 1                   ; tile n has landed; n+1 still moving
   ...  compute on the tile that arrived ...
-  s_add_u32   global_addr_lo, ...      ; point the descriptor at the next tile
+  s_add_u32   global_addr_lo, ...      ; advance the address, and shrink the
+  ...                                  ; bound if this row is running out
   TENSOR_LOAD_TO_LDS  D#               ; start fetching tile n+2
   s_cbranch   loop
 ```
@@ -200,57 +205,15 @@ There's one more piece for the common case where one wave fetches and many waves
 
 ---
 
-## What it actually does on an MI450
+## Things to get right
 
-All of the above is what the manual promises. Here is what an MI450 (gfx1250, 256 CUs, ROCm 10.1) does when you ask it.
+A descriptor holds a lot of fields, and a few of them are worth committing to memory before you write one by hand.
 
-One caveat on the absolute numbers before the table, because it took me three tries to get right.
-
-This machine reports a 24,576-bit bus and 432 GB, which is twelve 2,048-bit HBM4 stacks of 36 GB, matching the advertised MI450-series configuration. Its memory clock sits at 1,900 MHz and does not move: idle and under a fully saturating load it reads the same, on a single DPM level. The core is the part that looks unusual, capped at 1,100 MHz and drooping to about 1,048 MHz under sustained load.
-
-I first read that as underclocked memory. It isn't. While a streaming kernel sustains 10,789 GB/s, the memory controller reports 46% utilization, which puts the interface's own capability near 23,400 GB/s, essentially the 23.3 TB/s an MI455X advertises. The memory is running at speed. What my measurements are limited by is the other side: 256 compute units at roughly 1 GHz issuing requests, which is not enough to keep that interface busy.
-
-So the figures below are not a memory-bandwidth roof. They are what this machine's shader core can pull through a memory system with plenty of headroom left. That has a specific consequence for reading them: where a method saturates here, it has saturated the *request rate*, not the memory, and a part with a faster core would go higher. I have deliberately not projected the numbers onto a shipping part, because the limit I hit is one I cannot scale with confidence.
-
-The ratios between the three methods are the durable part. All three ran on the same machine in the same session against the same limit.
-
-The benchmark fills LDS as fast as it can, three ways: one transfer at a time, two in flight using the counter threshold, and a hand-written copy loop where all 256 threads move float4s. Every workgroup sweeps its own 4 MB slice of a 16 GB buffer so nothing is served out of cache. For reference, the best plain streaming read I could get here is 10,917 GB/s and the best write 10,589 GB/s.
-
-Each row is the mean of four runs, which agreed to within about 1% of each other.
-
-Each row is the mean of four runs, which agreed with each other to about 1%.
-
-| Tile | One at a time | Two in flight | Copy loop | Two-in-flight gains | Best vs copy loop |
-|---|---|---|---|---|---|
-| 1 KB | 2,349 GB/s | 4,323 GB/s | 2,349 GB/s | 1.84x | 1.84x |
-| 2 KB | 4,213 GB/s | 7,644 GB/s | 4,207 GB/s | 1.81x | 1.82x |
-| 4 KB | 7,418 GB/s | 10,878 GB/s | 7,255 GB/s | 1.47x | 1.50x |
-| 8 KB | 10,809 GB/s | 10,597 GB/s | 7,899 GB/s | 0.98x | 1.37x |
-| 16 KB | 10,667 GB/s | 10,457 GB/s | 8,241 GB/s | 0.98x | 1.29x |
-
-The ceiling everything runs into, around 10,800 GB/s, is the same number a plain streaming read reaches on this machine, and as noted above it is a request-rate limit rather than a memory one.
-
-Two things jump out.
-
-**The copy loop never gets near the ceiling, and the engine always does.** The hand-written version tops out around 8,200 GB/s no matter how big the tile gets. The engine reaches about 10,800, matching what this machine's reference streaming kernel manages. That gap is the whole benefit, and it is worth between 1.3x and 1.8x depending on the tile.
-
-**Which lever gets you there changes with tile size.** At 1 KB and 2 KB a single transfer at a time is exactly as fast as the copy loop, to within a fraction of a percent, and the win comes entirely from keeping two in flight: 1.84x and 1.81x. One small transfer cannot cover memory latency on its own, and two overlapping ones can. By 8 KB a single transfer is already large enough to saturate, so the second one stops paying and the pipelining column drops to 0.98x. Below 4 KB the counter is doing the work; at 8 KB and above the engine is.
-
-Put differently: a 4 KB tile with two transfers in flight reaches 10,878 GB/s, and an 8 KB tile reaches 10,809 GB/s with just one. Both are within a percent of the best the reference kernel manages, so the engine gets as much out of this machine as a hand-tuned read loop does. A tile copy driven this way does saturate memory. But you only get there by keeping more than one in flight, and that is a property of the wait threshold rather than of the DMA engine.
-
-The same effect shows up in the reference measurement, which is what convinced me it is real. A simple read kernel with no unrolling sits at about 8,900 GB/s however many workgroups you launch; unrolling it so each thread has two loads outstanding takes it to 10,900. Whether you get memory-level parallelism from unrolling a load loop or from a second outstanding tensor transfer, the machine wants more than one request in flight per thread of control.
-
-The rest of the behaviour matched the manual. Padding skipped exactly one DWORD after every eight, as the encodings say. Gather pulled scattered rows into LDS in index order, handled repeated indices, and worked with unsorted indices too; the one out-of-range index I fed it came back zero-filled even unsorted, though since the manual only guarantees that for non-decreasing lists I wouldn't lean on it.
-
----
-
-## Things that will bite you
-
-- A descriptor field left at zero can silently turn the whole transfer into a no-op, including the completion signal other waves are waiting on.
-- Several fields are encoded rather than literal, so the number you write isn't the number you get.
-- Errors are reported once, at the end, with no indication of which part of the transfer went wrong. Debugging a bad descriptor means bisecting it.
-- Some bits exist for the hardware's own context-switching machinery and must be zeroed explicitly. Leaving junk there doesn't corrupt the data, it changes which operation you asked for.
-- If you drive this from inline assembly, the compiler cannot see that the engine writes your LDS array. My first working descriptor appeared to return all zeros, and the reason was that LLVM had deleted every read of the shared array as undefined: the generated code contained no LDS loads at all. A "memory" clobber on the asm block was not enough. Make sure something the compiler can see writes that buffer.
+- Two fields act as an off switch. tile_dim0 of zero makes the operation a no-op, and count of zero declares a null tensor, which also means no completion signal for waves waiting on the barrier.
+- Several fields are encoded rather than literal, so the number you write is not the number you get. The padding pair is the one to watch.
+- Faults are reported once for the whole operation rather than per transfer, which keeps the common path cheap and means isolating a bad field is a matter of narrowing down rather than reading an address off an error report.
+- Group 0 carries fields the context save and restore machinery uses, marked must-be-zero. Zeroing them explicitly, rather than inheriting whatever the SGPRs held, is the difference between the operation you meant and a differently typed one.
+- Driving this from inline assembly hides the LDS writes from the compiler, which is expected but easy to forget. My first correct descriptor appeared to return zeros because LLVM had folded away reads of a shared array that nothing visibly wrote, leaving no LDS loads in the generated code at all. A memory clobber does not cover it. Give the compiler a write it can see.
 
 ---
 
@@ -262,7 +225,7 @@ The out-of-bounds behaviour is more useful than it first looks. Zero on read, dr
 
 And the counter matters as much as the engine does. A copy engine you had to fully drain before computing would only save you some instructions. Being able to say "wait until only one is still outstanding" is what turns it into a pipeline.
 
-The measurements bear that out at small tiles. Below 4 KB a single transfer is no faster than a hand-written copy loop, and the entire win comes from keeping two in flight. Once tiles reach 8 KB the engine saturates memory by itself and the counter stops mattering. Which of the two is doing the work depends on how much data you move per instruction.
+That is worth being concrete about, because it is easy to assume the DMA engine is the part that makes this fast. For a small tile it is not. One transfer on its own spends most of its time waiting on memory, and a hand-written copy loop does just as well. What buys you anything is the second transfer overlapping the first. Only once tiles get large does a single transfer keep memory busy by itself, at which point the counter stops mattering and the engine carries it. Which half is doing the work depends on how much data you move per instruction.
 
 ---
 
@@ -331,7 +294,7 @@ for Z = 0..D#.tile_dim2
 
 Two things to read out of it. There is no LDS-side stride field at all, so padding is the only way to get a non-contiguous destination layout. And dimension 0 is contiguous in both spaces, which is where your coalescing lives, so it wants to be the fast-varying dimension of the memory layout.
 
-Those loop bounds read oddly: for X = 0..D#.tile_dim0 looks like tile_dim0 + 1 iterations, which contradicts tile_dim0 being "tile dimension 0 in elements." On hardware it's a plain count. Setting tile_dim0 = 8 moves exactly 8 elements and leaves the ninth LDS slot untouched, so the pseudocode is just loose about its range.
+The pseudocode writes its loops as for X = 0..D#.tile_dim0, which is range notation rather than a literal bound: tile_dim0 is a plain count. Setting it to 8 moves exactly 8 elements and leaves the ninth LDS slot untouched.
 
 ### Padding encodings
 
@@ -360,7 +323,7 @@ Completion is per-instruction, so the engine may split a tile into a hundred mem
 
 Same-wave transfers are FIFO, loads and stores together, which is stronger than ASYNCcnt gives you (there, loads and stores complete out of order relative to each other).
 
-The third is the trap: TDM is unordered against every other memory type. A GLOBAL_STORE issued before a TENSOR_LOAD_TO_LDS from the same wave has no defined ordering against it.
+The third is the one to design around: TDM is unordered against every other memory type. A GLOBAL_STORE issued before a TENSOR_LOAD_TO_LDS from the same wave has no defined ordering against it.
 
 One side effect worth knowing: §3.2.2.1 lets the hardware skip vector memory instructions when EXEC == 0, but only when LOADcnt, STOREcnt, ASYNCcnt and TENSORcnt are all zero. An outstanding transfer suppresses that optimization for the whole wave.
 
@@ -390,9 +353,9 @@ MEMVIOL is reported if a tile address falls outside the wave's LDS allocation (a
 
 XNACK-retry is absorbed by the engine, so page faults on the DMA path resolve without the wave's involvement. XNACK-error can still surface, for a write to a read-only page for instance, and it is explicitly imprecise: "the wave cannot rewind the PC to the faulting instructions."
 
-Group 0 carries five fields (count, is_restore, is_store, nv and User_null) all marked "User: must set to zero." They exist because the same descriptor format is reused by the context save and restore machinery, and is_restore = 1 lets the restore path override the instruction's own load/store direction. Junk in those bits doesn't give you a bad tile, it gives you a differently-typed operation. The type field in bits [127:126] must be 2 ("image"), so a descriptor built from zeroed registers isn't valid at all.
+Group 0 carries five fields (count, is_restore, is_store, nv and User_null) all marked "User: must set to zero." They exist because the same descriptor format is reused by the context save and restore machinery, and is_restore = 1 lets the restore path override the instruction's own load/store direction. Leaving stale values there does not give you a bad tile, it gives you a differently typed operation. The type field in bits [127:126] must be 2 ("image"), so a descriptor built from zeroed registers isn't valid at all.
 
-Two ways to silently do nothing: tile_dim0 == 0 makes the tensor a NOP, and count == 0 means "NULL tensor, no memory is copied, no atomic_barrier sent." The second is worse, since it also never signals the barrier your consumers are asleep on.
+Two fields turn the operation into a no-op: tile_dim0 == 0 makes the tensor a NOP, and count == 0 means "NULL tensor, no memory is copied, no atomic_barrier sent." The second is worse, since it also never signals the barrier your consumers are asleep on.
 
 tile_dim1 through tile_dim4 use 0 for "dimension unused" and 1..Max for a real extent, so there's no way to express a legitimately empty higher dimension.
 

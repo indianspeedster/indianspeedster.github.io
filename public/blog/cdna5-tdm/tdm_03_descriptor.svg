@@ -1,59 +1,78 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="624" viewBox="0 0 1000 624" font-family="system-ui, -apple-system, sans-serif">
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="604" viewBox="0 0 1000 604" font-family="Excalifont, cursive">
+<style>@font-face{font-family:"Excalifont";src:url("../../fonts/Excalifont-Regular.ttf") format("truetype");font-style:normal;font-weight:100 900;font-display:block}text{font-family:"Excalifont",cursive}</style>
 <defs><marker id="ah" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L8,3 L0,6 Z" fill="#1e1e1e"/></marker><marker id="ahs" markerWidth="10" markerHeight="10" refX="0" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M8,0 L0,3 L8,6 Z" fill="#1e1e1e"/></marker></defs>
-<rect width="1000" height="624" fill="#ffffff"/>
-<text x="40" y="44.7" font-size="26" text-anchor="start" fill="#1e1e1e" font-weight="bold">The Tensor DMA Descriptor (D#): 20 SGPRs, four groups</text>
-<rect x="40" y="96" width="185" height="56" rx="12" fill="#a5d8ff" stroke="#1e1e1e" stroke-width="2"/>
-<text x="132" y="118.6" font-size="13.5" text-anchor="middle" fill="#1e1e1e" font-weight="bold">Group 0</text>
-<text x="132" y="135.47" font-size="13.5" text-anchor="middle" fill="#1e1e1e" font-weight="bold">VADDR0 · 4 SGPRs</text>
-<rect x="40" y="164" width="185" height="226" rx="12" fill="#ffffff" stroke="#868e96" stroke-width="2"/>
-<text x="53" y="191" font-size="12" text-anchor="start" fill="#495057" font-weight="normal" font-family="ui-monospace, SFMono-Regular, Menlo, monospace">lds_addr</text>
-<text x="53" y="214" font-size="12" text-anchor="start" fill="#495057" font-weight="normal" font-family="ui-monospace, SFMono-Regular, Menlo, monospace">global_addr</text>
-<text x="53" y="237" font-size="12" text-anchor="start" fill="#495057" font-weight="normal" font-family="ui-monospace, SFMono-Regular, Menlo, monospace">gather_mode, index_size</text>
-<text x="53" y="260" font-size="12" text-anchor="start" fill="#495057" font-weight="normal" font-family="ui-monospace, SFMono-Regular, Menlo, monospace">scope, th</text>
-<text x="53" y="283" font-size="12" text-anchor="start" fill="#495057" font-weight="normal" font-family="ui-monospace, SFMono-Regular, Menlo, monospace">type = 2</text>
-<text x="53" y="306" font-size="12" text-anchor="start" fill="#495057" font-weight="normal" font-family="ui-monospace, SFMono-Regular, Menlo, monospace">count, is_restore, is_store</text>
-<rect x="285" y="96" width="185" height="56" rx="12" fill="#b2f2bb" stroke="#1e1e1e" stroke-width="2"/>
-<text x="377" y="118.6" font-size="13.5" text-anchor="middle" fill="#1e1e1e" font-weight="bold">Group 1</text>
-<text x="377" y="135.47" font-size="13.5" text-anchor="middle" fill="#1e1e1e" font-weight="bold">VADDR1 · 8 SGPRs</text>
-<rect x="285" y="164" width="185" height="226" rx="12" fill="#ffffff" stroke="#868e96" stroke-width="2"/>
-<text x="298" y="191" font-size="12" text-anchor="start" fill="#495057" font-weight="normal" font-family="ui-monospace, SFMono-Regular, Menlo, monospace">workgroup_mask</text>
-<text x="298" y="214" font-size="12" text-anchor="start" fill="#495057" font-weight="normal" font-family="ui-monospace, SFMono-Regular, Menlo, monospace">data_size</text>
-<text x="298" y="237" font-size="12" text-anchor="start" fill="#495057" font-weight="normal" font-family="ui-monospace, SFMono-Regular, Menlo, monospace">atomic_barrier_enable</text>
-<text x="298" y="260" font-size="12" text-anchor="start" fill="#495057" font-weight="normal" font-family="ui-monospace, SFMono-Regular, Menlo, monospace">iterate_enable</text>
-<text x="298" y="283" font-size="12" text-anchor="start" fill="#495057" font-weight="normal" font-family="ui-monospace, SFMono-Regular, Menlo, monospace">pad_enable, pad_interval</text>
-<text x="298" y="306" font-size="12" text-anchor="start" fill="#495057" font-weight="normal" font-family="ui-monospace, SFMono-Regular, Menlo, monospace">pad_amount</text>
-<text x="298" y="329" font-size="12" text-anchor="start" fill="#495057" font-weight="normal" font-family="ui-monospace, SFMono-Regular, Menlo, monospace">tensor_dim0, tensor_dim1</text>
-<text x="298" y="352" font-size="12" text-anchor="start" fill="#495057" font-weight="normal" font-family="ui-monospace, SFMono-Regular, Menlo, monospace">tile_dim0, tile_dim1, tile_dim2</text>
-<text x="298" y="375" font-size="12" text-anchor="start" fill="#495057" font-weight="normal" font-family="ui-monospace, SFMono-Regular, Menlo, monospace">dim0_stride, dim1_stride</text>
-<rect x="530" y="96" width="185" height="56" rx="12" fill="#ffec99" stroke="#1e1e1e" stroke-width="2"/>
-<text x="622" y="118.6" font-size="13.5" text-anchor="middle" fill="#1e1e1e" font-weight="bold">Group 2</text>
-<text x="622" y="135.47" font-size="13.5" text-anchor="middle" fill="#1e1e1e" font-weight="bold">VADDR2 · 4 SGPRs</text>
-<rect x="530" y="164" width="185" height="226" rx="12" fill="#ffffff" stroke="#868e96" stroke-width="2"/>
-<text x="543" y="191" font-size="12" text-anchor="start" fill="#495057" font-weight="normal" font-family="ui-monospace, SFMono-Regular, Menlo, monospace">tensor_dim2</text>
-<text x="543" y="214" font-size="12" text-anchor="start" fill="#495057" font-weight="normal" font-family="ui-monospace, SFMono-Regular, Menlo, monospace">tensor_dim3</text>
-<text x="543" y="237" font-size="12" text-anchor="start" fill="#495057" font-weight="normal" font-family="ui-monospace, SFMono-Regular, Menlo, monospace">tensor_dim2_stride</text>
-<text x="543" y="260" font-size="12" text-anchor="start" fill="#495057" font-weight="normal" font-family="ui-monospace, SFMono-Regular, Menlo, monospace">tile_dim3</text>
-<rect x="775" y="96" width="185" height="56" rx="12" fill="#ffd8a8" stroke="#1e1e1e" stroke-width="2"/>
-<text x="867" y="118.6" font-size="13.5" text-anchor="middle" fill="#1e1e1e" font-weight="bold">Group 3</text>
-<text x="867" y="135.47" font-size="13.5" text-anchor="middle" fill="#1e1e1e" font-weight="bold">VADDR3 · 4 SGPRs</text>
-<rect x="775" y="164" width="185" height="226" rx="12" fill="#ffffff" stroke="#868e96" stroke-width="2"/>
-<text x="788" y="191" font-size="12" text-anchor="start" fill="#495057" font-weight="normal" font-family="ui-monospace, SFMono-Regular, Menlo, monospace">tensor_dim3_stride</text>
-<text x="788" y="214" font-size="12" text-anchor="start" fill="#495057" font-weight="normal" font-family="ui-monospace, SFMono-Regular, Menlo, monospace">tensor_dim4</text>
-<text x="788" y="237" font-size="12" text-anchor="start" fill="#495057" font-weight="normal" font-family="ui-monospace, SFMono-Regular, Menlo, monospace">tile_dim4</text>
-<text x="788" y="260" font-size="12" text-anchor="start" fill="#495057" font-weight="normal" font-family="ui-monospace, SFMono-Regular, Menlo, monospace">reserved</text>
-<rect x="40" y="412" width="430" height="56" rx="12" fill="#f8f9fa" stroke="#868e96" stroke-width="2"/>
-<text x="255" y="434.6" font-size="13.5" text-anchor="middle" fill="#495057" font-weight="normal">2D tensor:  groups 0 + 1 only  =  12 SGPRs</text>
-<text x="255" y="451.48" font-size="13.5" text-anchor="middle" fill="#495057" font-weight="normal">up to 5D:  all four groups  =  20 SGPRs</text>
-<text x="255" y="500.8" font-size="13" text-anchor="middle" fill="#868e96" font-weight="normal">VADDR2 and VADDR3 must both be NULL or both non-NULL.</text>
-<text x="255" y="517.05" font-size="13" text-anchor="middle" fill="#868e96" font-weight="normal">global_addr points at the tile, not at the tensor origin.</text>
-<rect x="530" y="412" width="430" height="86" rx="12" fill="#fff9db" stroke="#e8590c" stroke-width="1.5"/>
-<text x="745" y="435.2" font-size="12" text-anchor="middle" fill="#e8590c" font-weight="normal" font-family="ui-monospace, SFMono-Regular, Menlo, monospace">iterate_enable = 1  overloads group 2:</text>
-<text x="745" y="450.2" font-size="12" text-anchor="middle" fill="#e8590c" font-weight="normal" font-family="ui-monospace, SFMono-Regular, Menlo, monospace">tensor_dim3 → lds_addr_increment</text>
-<text x="745" y="465.2" font-size="12" text-anchor="middle" fill="#e8590c" font-weight="normal" font-family="ui-monospace, SFMono-Regular, Menlo, monospace">tensor_dim2_stride → global_addr_increment</text>
-<text x="745" y="480.2" font-size="12" text-anchor="middle" fill="#e8590c" font-weight="normal" font-family="ui-monospace, SFMono-Regular, Menlo, monospace">tile_dim3 → iterate_count</text>
-<rect x="530" y="514" width="430" height="62" rx="12" fill="#fff5f5" stroke="#c92a2a" stroke-width="1.5"/>
-<text x="745" y="540.2" font-size="12" text-anchor="middle" fill="#c92a2a" font-weight="normal" font-family="ui-monospace, SFMono-Regular, Menlo, monospace">gather_mode = 1  replaces groups 2 and 3 entirely</text>
-<text x="745" y="555.2" font-size="12" text-anchor="middle" fill="#c92a2a" font-weight="normal" font-family="ui-monospace, SFMono-Regular, Menlo, monospace">with 8 (32-bit) or 16 (16-bit) row indices</text>
-<text x="500" y="596.6" font-size="13.5" text-anchor="middle" fill="#495057" font-weight="normal">Four mode bits — iterate_enable, gather_mode, pad_enable and a non-zero workgroup_mask — change what the other</text>
-<text x="500" y="613.48" font-size="13.5" text-anchor="middle" fill="#495057" font-weight="normal">fields mean. The descriptor is closer to a tagged union than to a flat struct.</text>
+<rect width="1000" height="604" fill="#ffffff"/>
+<text x="40" y="44.7" font-size="26" text-anchor="start" fill="#1e1e1e" font-weight="bold">The descriptor is 20 SGPRs, and the last 8 change meaning</text>
+<rect x="60" y="116" width="44" height="46" fill="#a5d8ff" stroke="#1e1e1e" stroke-width="1.5"/>
+<text x="82.0" y="144.0" font-size="13" text-anchor="middle" fill="#495057" font-weight="normal">0</text>
+<rect x="104" y="116" width="44" height="46" fill="#a5d8ff" stroke="#1e1e1e" stroke-width="1.5"/>
+<text x="126.0" y="144.0" font-size="13" text-anchor="middle" fill="#495057" font-weight="normal">1</text>
+<rect x="148" y="116" width="44" height="46" fill="#a5d8ff" stroke="#1e1e1e" stroke-width="1.5"/>
+<text x="170.0" y="144.0" font-size="13" text-anchor="middle" fill="#495057" font-weight="normal">2</text>
+<rect x="192" y="116" width="44" height="46" fill="#a5d8ff" stroke="#1e1e1e" stroke-width="1.5"/>
+<text x="214.0" y="144.0" font-size="13" text-anchor="middle" fill="#495057" font-weight="normal">3</text>
+<rect x="236" y="116" width="44" height="46" fill="#b2f2bb" stroke="#1e1e1e" stroke-width="1.5"/>
+<text x="258.0" y="144.0" font-size="13" text-anchor="middle" fill="#495057" font-weight="normal">4</text>
+<rect x="280" y="116" width="44" height="46" fill="#b2f2bb" stroke="#1e1e1e" stroke-width="1.5"/>
+<text x="302.0" y="144.0" font-size="13" text-anchor="middle" fill="#495057" font-weight="normal">5</text>
+<rect x="324" y="116" width="44" height="46" fill="#b2f2bb" stroke="#1e1e1e" stroke-width="1.5"/>
+<text x="346.0" y="144.0" font-size="13" text-anchor="middle" fill="#495057" font-weight="normal">6</text>
+<rect x="368" y="116" width="44" height="46" fill="#b2f2bb" stroke="#1e1e1e" stroke-width="1.5"/>
+<text x="390.0" y="144.0" font-size="13" text-anchor="middle" fill="#495057" font-weight="normal">7</text>
+<rect x="412" y="116" width="44" height="46" fill="#b2f2bb" stroke="#1e1e1e" stroke-width="1.5"/>
+<text x="434.0" y="144.0" font-size="13" text-anchor="middle" fill="#495057" font-weight="normal">8</text>
+<rect x="456" y="116" width="44" height="46" fill="#b2f2bb" stroke="#1e1e1e" stroke-width="1.5"/>
+<text x="478.0" y="144.0" font-size="13" text-anchor="middle" fill="#495057" font-weight="normal">9</text>
+<rect x="500" y="116" width="44" height="46" fill="#b2f2bb" stroke="#1e1e1e" stroke-width="1.5"/>
+<text x="522.0" y="144.0" font-size="13" text-anchor="middle" fill="#495057" font-weight="normal">10</text>
+<rect x="544" y="116" width="44" height="46" fill="#b2f2bb" stroke="#1e1e1e" stroke-width="1.5"/>
+<text x="566.0" y="144.0" font-size="13" text-anchor="middle" fill="#495057" font-weight="normal">11</text>
+<rect x="588" y="116" width="44" height="46" fill="#ffec99" stroke="#1e1e1e" stroke-width="1.5"/>
+<text x="610.0" y="144.0" font-size="13" text-anchor="middle" fill="#495057" font-weight="normal">12</text>
+<rect x="632" y="116" width="44" height="46" fill="#ffec99" stroke="#1e1e1e" stroke-width="1.5"/>
+<text x="654.0" y="144.0" font-size="13" text-anchor="middle" fill="#495057" font-weight="normal">13</text>
+<rect x="676" y="116" width="44" height="46" fill="#ffec99" stroke="#1e1e1e" stroke-width="1.5"/>
+<text x="698.0" y="144.0" font-size="13" text-anchor="middle" fill="#495057" font-weight="normal">14</text>
+<rect x="720" y="116" width="44" height="46" fill="#ffec99" stroke="#1e1e1e" stroke-width="1.5"/>
+<text x="742.0" y="144.0" font-size="13" text-anchor="middle" fill="#495057" font-weight="normal">15</text>
+<rect x="764" y="116" width="44" height="46" fill="#ffd8a8" stroke="#1e1e1e" stroke-width="1.5"/>
+<text x="786.0" y="144.0" font-size="13" text-anchor="middle" fill="#495057" font-weight="normal">16</text>
+<rect x="808" y="116" width="44" height="46" fill="#ffd8a8" stroke="#1e1e1e" stroke-width="1.5"/>
+<text x="830.0" y="144.0" font-size="13" text-anchor="middle" fill="#495057" font-weight="normal">17</text>
+<rect x="852" y="116" width="44" height="46" fill="#ffd8a8" stroke="#1e1e1e" stroke-width="1.5"/>
+<text x="874.0" y="144.0" font-size="13" text-anchor="middle" fill="#495057" font-weight="normal">18</text>
+<rect x="896" y="116" width="44" height="46" fill="#ffd8a8" stroke="#1e1e1e" stroke-width="1.5"/>
+<text x="918.0" y="144.0" font-size="13" text-anchor="middle" fill="#495057" font-weight="normal">19</text>
+<text x="48" y="144.0" font-size="13" text-anchor="end" fill="#868e96" font-weight="normal">SGPR</text>
+<line x1="63" y1="171" x2="233" y2="171" stroke="#868e96" stroke-width="1.5"/>
+<text x="148.0" y="189.0" font-size="12.5" text-anchor="middle" fill="#495057" font-weight="normal">group 0</text>
+<text x="148.0" y="204.62" font-size="12.5" text-anchor="middle" fill="#495057" font-weight="normal">4 SGPRs · VADDR0</text>
+<line x1="239" y1="171" x2="585" y2="171" stroke="#868e96" stroke-width="1.5"/>
+<text x="412.0" y="189.0" font-size="12.5" text-anchor="middle" fill="#495057" font-weight="normal">group 1</text>
+<text x="412.0" y="204.62" font-size="12.5" text-anchor="middle" fill="#495057" font-weight="normal">8 SGPRs · VADDR1</text>
+<line x1="591" y1="171" x2="761" y2="171" stroke="#868e96" stroke-width="1.5"/>
+<text x="676.0" y="189.0" font-size="12.5" text-anchor="middle" fill="#495057" font-weight="normal">group 2</text>
+<text x="676.0" y="204.62" font-size="12.5" text-anchor="middle" fill="#495057" font-weight="normal">4 SGPRs · VADDR2</text>
+<line x1="767" y1="171" x2="937" y2="171" stroke="#868e96" stroke-width="1.5"/>
+<text x="852.0" y="189.0" font-size="12.5" text-anchor="middle" fill="#495057" font-weight="normal">group 3</text>
+<text x="852.0" y="204.62" font-size="12.5" text-anchor="middle" fill="#495057" font-weight="normal">4 SGPRs · VADDR3</text>
+<line x1="588" y1="86" x2="588" y2="166" stroke="#c92a2a" stroke-width="2" stroke-dasharray="5 4"/>
+<text x="578" y="78" font-size="13" text-anchor="end" fill="#c92a2a" font-weight="normal">a 2D copy needs only these 12</text>
+<text x="598" y="78" font-size="13" text-anchor="start" fill="#c92a2a" font-weight="normal">up to 5D needs all 20</text>
+<line x1="764" y1="208" x2="764" y2="268" stroke="#1e1e1e" stroke-width="2" marker-end="url(#ah)" />
+<text x="500" y="258" font-size="15" text-anchor="middle" fill="#1e1e1e" font-weight="bold">what groups 2 and 3 hold depends on two mode bits:</text>
+<text x="258" y="324" font-size="13.5" text-anchor="end" fill="#1e1e1e" font-weight="bold" font-family="Excalifont, cursive">no mode bit set</text>
+<rect x="272" y="290" width="668" height="68" rx="12" fill="#e9ecef" stroke="#1e1e1e" stroke-width="2"/>
+<text x="606.0" y="318.8" font-size="13" text-anchor="middle" fill="#1e1e1e" font-weight="normal">tensor_dim2 · tensor_dim3 · tensor_dim4</text>
+<text x="606.0" y="335.05" font-size="13" text-anchor="middle" fill="#1e1e1e" font-weight="normal">tensor_dim2_stride · tensor_dim3_stride · tile_dim3 · tile_dim4</text>
+<text x="258" y="410" font-size="13.5" text-anchor="end" fill="#1e1e1e" font-weight="bold" font-family="Excalifont, cursive">iterate_enable = 1</text>
+<rect x="272" y="376" width="668" height="68" rx="12" fill="#fff3bf" stroke="#1e1e1e" stroke-width="2"/>
+<text x="606.0" y="404.8" font-size="13" text-anchor="middle" fill="#1e1e1e" font-weight="normal">lds_addr_increment · global_addr_increment · iterate_count</text>
+<text x="606.0" y="421.05" font-size="13" text-anchor="middle" fill="#1e1e1e" font-weight="normal">the 4D and 5D fields are gone, so iteration is 2D and 3D only</text>
+<text x="258" y="496" font-size="13.5" text-anchor="end" fill="#1e1e1e" font-weight="bold" font-family="Excalifont, cursive">gather_mode = 1</text>
+<rect x="272" y="462" width="668" height="68" rx="12" fill="#ffe3e3" stroke="#1e1e1e" stroke-width="2"/>
+<text x="606.0" y="490.8" font-size="13" text-anchor="middle" fill="#1e1e1e" font-weight="normal">16 row indices at 16 bits each, or 8 at 32 bits</text>
+<text x="606.0" y="507.05" font-size="13" text-anchor="middle" fill="#1e1e1e" font-weight="normal">no tensor dimensions at all in these registers</text>
+<text x="500" y="572.8" font-size="13" text-anchor="middle" fill="#495057" font-weight="normal">A 2D transfer points VADDR2 and VADDR3 at NULL and uses 12 registers. The two must both be NULL or both be set.</text>
+<text x="500" y="589.05" font-size="13" text-anchor="middle" fill="#495057" font-weight="normal">Every field name above is listed in full in the appendix.</text>
 </svg>

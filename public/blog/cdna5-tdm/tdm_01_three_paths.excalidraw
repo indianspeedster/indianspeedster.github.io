@@ -165,8 +165,8 @@
    "y": 77.6,
    "width": 178.2,
    "height": 22.5,
-   "text": "Async global → LDS",
-   "originalText": "Async global → LDS",
+   "text": "Async global to LDS",
+   "originalText": "Async global to LDS",
    "fontSize": 18,
    "fontFamily": 1,
    "strokeColor": "#1e1e1e",
@@ -764,7 +764,7 @@
    "text": "GLOBAL_LOAD_B128",
    "originalText": "GLOBAL_LOAD_B128",
    "fontSize": 12.5,
-   "fontFamily": 3,
+   "fontFamily": 1,
    "strokeColor": "#495057",
    "textAlign": "left",
    "autoResize": true
@@ -779,7 +779,7 @@
    "text": "DS_STORE_B128",
    "originalText": "DS_STORE_B128",
    "fontSize": 12.5,
-   "fontFamily": 3,
+   "fontFamily": 1,
    "strokeColor": "#495057",
    "textAlign": "left",
    "autoResize": true
@@ -794,7 +794,7 @@
    "text": "GLOBAL_LOAD_ASYNC_TO_LDS",
    "originalText": "GLOBAL_LOAD_ASYNC_TO_LDS",
    "fontSize": 12.5,
-   "fontFamily": 3,
+   "fontFamily": 1,
    "strokeColor": "#495057",
    "textAlign": "left",
    "autoResize": true
@@ -809,7 +809,7 @@
    "text": "TENSOR_LOAD_TO_LDS",
    "originalText": "TENSOR_LOAD_TO_LDS",
    "fontSize": 12.5,
-   "fontFamily": 3,
+   "fontFamily": 1,
    "strokeColor": "#495057",
    "textAlign": "left",
    "autoResize": true

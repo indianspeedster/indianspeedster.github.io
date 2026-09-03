@@ -23,7 +23,7 @@
    "id": "title",
    "x": 40,
    "y": 22,
-   "width": 860,
+   "width": 920,
    "height": 32,
    "text": "Where the TDM sits: one engine per pair of SIMDs",
    "originalText": "Where the TDM sits: one engine per pair of SIMDs",
@@ -652,7 +652,7 @@
   {
    "type": "text",
    "id": "tx30",
-   "x": 782.8,
+   "x": 826.8,
    "y": 285.8,
    "width": 114.4,
    "height": 20.0,
@@ -667,7 +667,7 @@
   {
    "type": "text",
    "id": "tx31",
-   "x": 818.0,
+   "x": 862.0,
    "y": 305.8,
    "width": 44.0,
    "height": 20.0,
@@ -682,7 +682,7 @@
   {
    "type": "rectangle",
    "id": "box29",
-   "x": 756,
+   "x": 800,
    "y": 238,
    "width": 168,
    "height": 134,
@@ -705,7 +705,7 @@
   {
    "type": "text",
    "id": "box29_t",
-   "x": 764,
+   "x": 808,
    "y": 246,
    "width": 152,
    "height": 118,
@@ -723,8 +723,8 @@
    "type": "arrow",
    "id": "ar32",
    "x": 640,
-   "y": 300,
-   "width": 116,
+   "y": 310,
+   "width": 160,
    "height": 0,
    "points": [
     [
@@ -732,7 +732,7 @@
      0
     ],
     [
-     116,
+     160,
      0
     ]
    ],
@@ -745,8 +745,8 @@
   {
    "type": "text",
    "id": "tx33",
-   "x": 653.3,
-   "y": 278.0,
+   "x": 675.3,
+   "y": 282.0,
    "width": 89.4,
    "height": 15.6,
    "text": "via GL1 / GL2",
@@ -760,7 +760,7 @@
   {
    "type": "text",
    "id": "tx34",
-   "x": 50.5,
+   "x": 80.5,
    "y": 517.8,
    "width": 839.0,
    "height": 16.9,
@@ -775,7 +775,7 @@
   {
    "type": "text",
    "id": "tx35",
-   "x": 132.2,
+   "x": 162.2,
    "y": 534.7,
    "width": 675.7,
    "height": 16.9,

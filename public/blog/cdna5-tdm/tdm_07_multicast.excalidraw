@@ -10,8 +10,8 @@
    "y": 23.9,
    "width": 800.8,
    "height": 32.5,
-   "text": "Multicast: one trip to memory, up to 16 LDS destinations",
-   "originalText": "Multicast: one trip to memory, up to 16 LDS destinations",
+   "text": "Multicast: one HBM fetch, many LDS copies",
+   "originalText": "Multicast: one HBM fetch, many LDS copies",
    "fontSize": 26,
    "fontFamily": 1,
    "strokeColor": "#1e1e1e",
@@ -25,8 +25,8 @@
    "y": 22,
    "width": 880,
    "height": 32,
-   "text": "Multicast: one trip to memory, up to 16 LDS destinations",
-   "originalText": "Multicast: one trip to memory, up to 16 LDS destinations",
+   "text": "Multicast: one HBM fetch, many LDS copies",
+   "originalText": "Multicast: one HBM fetch, many LDS copies",
    "fontSize": 20,
    "fontFamily": 1,
    "strokeColor": "#1e1e1e",
@@ -108,7 +108,7 @@
    "id": "ar5",
    "x": 220,
    "y": 255,
-   "width": 80,
+   "width": 68,
    "height": 0,
    "points": [
     [
@@ -116,7 +116,7 @@
      0
     ],
     [
-     80,
+     68,
      0
     ]
    ],
@@ -128,13 +128,13 @@
   {
    "type": "text",
    "id": "tx7",
-   "x": 394.3,
-   "y": 231.3,
-   "width": 21.5,
-   "height": 16.2,
+   "x": 402.7,
+   "y": 232.2,
+   "width": 20.6,
+   "height": 15.6,
    "text": "TDM",
    "originalText": "TDM",
-   "fontSize": 13,
+   "fontSize": 12.5,
    "fontFamily": 1,
    "strokeColor": "#1e1e1e",
    "textAlign": "center",
@@ -143,13 +143,13 @@
   {
    "type": "text",
    "id": "tx8",
-   "x": 340.6,
-   "y": 247.5,
-   "width": 128.7,
-   "height": 16.2,
-   "text": "workgroup_mask ≠ 0",
-   "originalText": "workgroup_mask ≠ 0",
-   "fontSize": 13,
+   "x": 351.1,
+   "y": 247.8,
+   "width": 123.8,
+   "height": 15.6,
+   "text": "mask selects workgroups 0-3",
+   "originalText": "mask selects workgroups 0-3",
+   "fontSize": 12.5,
    "fontFamily": 1,
    "strokeColor": "#1e1e1e",
    "textAlign": "center",
@@ -158,13 +158,13 @@
   {
    "type": "text",
    "id": "tx9",
-   "x": 333.5,
-   "y": 263.8,
-   "width": 143.0,
-   "height": 16.2,
-   "text": "→ CLUSTER_LOAD_ASYNC",
-   "originalText": "→ CLUSTER_LOAD_ASYNC",
-   "fontSize": 13,
+   "x": 333.9,
+   "y": 263.4,
+   "width": 158.1,
+   "height": 15.6,
+   "text": "uses CLUSTER_LOAD_ASYNC",
+   "originalText": "uses CLUSTER_LOAD_ASYNC",
+   "fontSize": 12.5,
    "fontFamily": 1,
    "strokeColor": "#1e1e1e",
    "textAlign": "center",
@@ -173,9 +173,9 @@
   {
    "type": "rectangle",
    "id": "box6",
-   "x": 300,
+   "x": 288,
    "y": 196,
-   "width": 210,
+   "width": 250,
    "height": 118,
    "roundness": {
     "type": 3
@@ -196,13 +196,13 @@
   {
    "type": "text",
    "id": "box6_t",
-   "x": 308,
+   "x": 296,
    "y": 204,
-   "width": 194,
+   "width": 234,
    "height": 102,
-   "text": "TDM\nworkgroup_mask ≠ 0\n→ CLUSTER_LOAD_ASYNC",
-   "originalText": "TDM\nworkgroup_mask ≠ 0\n→ CLUSTER_LOAD_ASYNC",
-   "fontSize": 10,
+   "text": "TDM multicast\nmask selects workgroups 0-3\nCLUSTER_LOAD_ASYNC",
+   "originalText": "TDM multicast\nmask selects workgroups 0-3\nCLUSTER_LOAD_ASYNC",
+   "fontSize": 9.5,
    "fontFamily": 1,
    "strokeColor": "#1e1e1e",
    "textAlign": "center",
@@ -213,9 +213,9 @@
   {
    "type": "arrow",
    "id": "ar10",
-   "x": 510,
+   "x": 538,
    "y": 255,
-   "width": 190,
+   "width": 162,
    "height": -119,
    "points": [
     [
@@ -223,15 +223,15 @@
      0
     ],
     [
-     190,
+     162,
      -119
     ]
    ],
    "endArrowhead": "arrow",
-   "strokeColor": "#1e1e1e",
-   "strokeWidth": 2,
+   "strokeColor": "#7048e8",
+   "strokeWidth": 2.5,
    "roughness": 1,
-   "strokeStyle": "dashed"
+   "strokeStyle": "solid"
   },
   {
    "type": "text",
@@ -240,8 +240,8 @@
    "y": 128.0,
    "width": 130.9,
    "height": 17.5,
-   "text": "LDS — workgroup 0",
-   "originalText": "LDS — workgroup 0",
+   "text": "WG 0 LDS: same tile",
+   "originalText": "WG 0 LDS: same tile",
    "fontSize": 14,
    "fontFamily": 1,
    "strokeColor": "#1e1e1e",
@@ -278,8 +278,8 @@
    "y": 118,
    "width": 194,
    "height": 36,
-   "text": "LDS — workgroup 0",
-   "originalText": "LDS — workgroup 0",
+   "text": "WG 0 LDS: same tile",
+   "originalText": "WG 0 LDS: same tile",
    "fontSize": 11,
    "fontFamily": 1,
    "strokeColor": "#1e1e1e",
@@ -291,9 +291,9 @@
   {
    "type": "arrow",
    "id": "ar13",
-   "x": 510,
+   "x": 538,
    "y": 255,
-   "width": 190,
+   "width": 162,
    "height": -39,
    "points": [
     [
@@ -301,15 +301,15 @@
      0
     ],
     [
-     190,
+     162,
      -39
     ]
    ],
    "endArrowhead": "arrow",
-   "strokeColor": "#1e1e1e",
-   "strokeWidth": 2,
+   "strokeColor": "#7048e8",
+   "strokeWidth": 2.5,
    "roughness": 1,
-   "strokeStyle": "dashed"
+   "strokeStyle": "solid"
   },
   {
    "type": "text",
@@ -318,8 +318,8 @@
    "y": 208.0,
    "width": 130.9,
    "height": 17.5,
-   "text": "LDS — workgroup 1",
-   "originalText": "LDS — workgroup 1",
+   "text": "WG 1 LDS: same tile",
+   "originalText": "WG 1 LDS: same tile",
    "fontSize": 14,
    "fontFamily": 1,
    "strokeColor": "#1e1e1e",
@@ -356,8 +356,8 @@
    "y": 198,
    "width": 194,
    "height": 36,
-   "text": "LDS — workgroup 1",
-   "originalText": "LDS — workgroup 1",
+   "text": "WG 1 LDS: same tile",
+   "originalText": "WG 1 LDS: same tile",
    "fontSize": 11,
    "fontFamily": 1,
    "strokeColor": "#1e1e1e",
@@ -369,9 +369,9 @@
   {
    "type": "arrow",
    "id": "ar16",
-   "x": 510,
+   "x": 538,
    "y": 255,
-   "width": 190,
+   "width": 162,
    "height": 41,
    "points": [
     [
@@ -379,15 +379,15 @@
      0
     ],
     [
-     190,
+     162,
      41
     ]
    ],
    "endArrowhead": "arrow",
-   "strokeColor": "#1e1e1e",
-   "strokeWidth": 2,
+   "strokeColor": "#7048e8",
+   "strokeWidth": 2.5,
    "roughness": 1,
-   "strokeStyle": "dashed"
+   "strokeStyle": "solid"
   },
   {
    "type": "text",
@@ -396,8 +396,8 @@
    "y": 287.9,
    "width": 130.9,
    "height": 17.5,
-   "text": "LDS — workgroup 2",
-   "originalText": "LDS — workgroup 2",
+   "text": "WG 2 LDS: same tile",
+   "originalText": "WG 2 LDS: same tile",
    "fontSize": 14,
    "fontFamily": 1,
    "strokeColor": "#1e1e1e",
@@ -434,8 +434,8 @@
    "y": 278,
    "width": 194,
    "height": 36,
-   "text": "LDS — workgroup 2",
-   "originalText": "LDS — workgroup 2",
+   "text": "WG 2 LDS: same tile",
+   "originalText": "WG 2 LDS: same tile",
    "fontSize": 11,
    "fontFamily": 1,
    "strokeColor": "#1e1e1e",
@@ -447,9 +447,9 @@
   {
    "type": "arrow",
    "id": "ar19",
-   "x": 510,
+   "x": 538,
    "y": 255,
-   "width": 190,
+   "width": 162,
    "height": 121,
    "points": [
     [
@@ -457,15 +457,15 @@
      0
     ],
     [
-     190,
+     162,
      121
     ]
    ],
    "endArrowhead": "arrow",
-   "strokeColor": "#1e1e1e",
-   "strokeWidth": 2,
+   "strokeColor": "#7048e8",
+   "strokeWidth": 2.5,
    "roughness": 1,
-   "strokeStyle": "dashed"
+   "strokeStyle": "solid"
   },
   {
    "type": "text",
@@ -474,8 +474,8 @@
    "y": 367.9,
    "width": 130.9,
    "height": 17.5,
-   "text": "LDS — workgroup 3",
-   "originalText": "LDS — workgroup 3",
+   "text": "WG 3 LDS: same tile",
+   "originalText": "WG 3 LDS: same tile",
    "fontSize": 14,
    "fontFamily": 1,
    "strokeColor": "#1e1e1e",
@@ -512,8 +512,8 @@
    "y": 358,
    "width": 194,
    "height": 36,
-   "text": "LDS — workgroup 3",
-   "originalText": "LDS — workgroup 3",
+   "text": "WG 3 LDS: same tile",
+   "originalText": "WG 3 LDS: same tile",
    "fontSize": 11,
    "fontFamily": 1,
    "strokeColor": "#1e1e1e",
@@ -562,8 +562,8 @@
    "y": 71.6,
    "width": 228.8,
    "height": 16.2,
-   "text": "workgroup cluster — one WGP each",
-   "originalText": "workgroup cluster — one WGP each",
+   "text": "selected workgroups in one cluster",
+   "originalText": "selected workgroups in one cluster",
    "fontSize": 13,
    "fontFamily": 1,
    "strokeColor": "#868e96",
@@ -577,8 +577,8 @@
    "y": 459.2,
    "width": 398.8,
    "height": 15.6,
-   "text": "Load only — for TENSOR_STORE_FROM_LDS the mask is ignored.",
-   "originalText": "Load only — for TENSOR_STORE_FROM_LDS the mask is ignored.",
+   "text": "Loads only: stores ignore the mask. Outside a cluster, workgroup_mask must be zero.",
+   "originalText": "Loads only: stores ignore the mask. Outside a cluster, workgroup_mask must be zero.",
    "fontSize": 12.5,
    "fontFamily": 1,
    "strokeColor": "#495057",
@@ -592,8 +592,8 @@
    "y": 474.8,
    "width": 797.5,
    "height": 15.6,
-   "text": "Every masked workgroup must make the same request; data returns when all have arrived or a timeout fires, so a badly",
-   "originalText": "Every masked workgroup must make the same request; data returns when all have arrived or a timeout fires, so a badly",
+   "text": "All selected workgroups issue the same request; the TDM waits for arrivals or a timeout.",
+   "originalText": "All selected workgroups issue the same request; the TDM waits for arrivals or a timeout.",
    "fontSize": 12.5,
    "fontFamily": 1,
    "strokeColor": "#495057",
@@ -607,8 +607,8 @@
    "y": 490.4,
    "width": 818.1,
    "height": 15.6,
-   "text": "skewed cluster degrades to no win rather than to a hang. workgroup_mask must be zero when the wave is not in a cluster.",
-   "originalText": "skewed cluster degrades to no win rather than to a hang. workgroup_mask must be zero when the wave is not in a cluster.",
+   "text": "The shared tile is fetched once from HBM and copied into every selected workgroup's LDS.",
+   "originalText": "The shared tile is fetched once from HBM and copied into every selected workgroup's LDS.",
    "fontSize": 12.5,
    "fontFamily": 1,
    "strokeColor": "#495057",
