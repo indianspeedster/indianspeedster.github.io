@@ -208,21 +208,23 @@ One caveat on the absolute numbers before the table. The machine I had access to
 
 The benchmark fills LDS as fast as it can, three ways: one transfer at a time, two in flight using the counter threshold, and a hand-written copy loop where all 256 threads move float4s. Every workgroup sweeps its own 4 MB slice of a 16 GB buffer so nothing is served out of cache. For reference, the best plain streaming read I could get here is 10,905 GB/s and the best write 10,509 GB/s, against that 11,700 GB/s ceiling, so the reference kernel is already at about 93% of what this configuration can do.
 
-| Tile | One at a time | Two in flight | Copy loop | Pipelining gains |
-|---|---|---|---|---|
-| 1 KB | 2,356 GB/s | 4,317 GB/s | 2,352 GB/s | 1.83x |
-| 2 KB | 4,216 GB/s | 7,634 GB/s | 4,208 GB/s | 1.81x |
-| 4 KB | 7,458 GB/s | 10,793 GB/s | 7,268 GB/s | 1.45x |
-| 8 KB | 8,910 GB/s | 9,819 GB/s | 7,533 GB/s | 1.10x |
-| 16 KB | 9,764 GB/s | 9,656 GB/s | 7,841 GB/s | 0.99x |
+Each row is the mean of four runs, which agreed to within about 1% of each other.
+
+| Tile | One at a time | Two in flight | Copy loop | Two-in-flight gains | Best vs copy loop |
+|---|---|---|---|---|---|
+| 1 KB | 2,349 GB/s | 4,323 GB/s | 2,349 GB/s | 1.84x | 1.84x |
+| 2 KB | 4,213 GB/s | 7,644 GB/s | 4,207 GB/s | 1.81x | 1.82x |
+| 4 KB | 7,418 GB/s | 10,878 GB/s | 7,255 GB/s | 1.47x | 1.50x |
+| 8 KB | 10,809 GB/s | 10,597 GB/s | 7,899 GB/s | 0.98x | 1.37x |
+| 16 KB | 10,667 GB/s | 10,457 GB/s | 8,241 GB/s | 0.98x | 1.29x |
 
 Two things jump out.
 
-**The engine on its own buys you almost nothing at small tiles.** At 1 KB and 2 KB the DMA engine and the hand-written copy loop are within a fraction of a percent of each other. It only starts winning around 8 KB, and even at 16 KB it's about 1.25x. If you were expecting the copy to get faster simply because dedicated hardware is doing it, that isn't what happens. What you save is instructions and registers, not time.
+**The copy loop never gets near the memory roof, and the engine always does.** The hand-written version tops out around 8,200 GB/s no matter how big the tile gets. The engine reaches about 10,800, which is the ceiling this machine's reference streaming kernel also hits. That gap is the whole benefit, and it is worth between 1.3x and 1.8x depending on the tile.
 
-**The counter is where the speed is.** Going from "wait for everything" to "wait until only one is outstanding" is worth 1.8x at 1 KB and 2 KB. One small transfer can't cover memory latency on its own; two overlapping ones can. By 8 KB a single transfer is already big enough to saturate and the second one stops helping, which is why the last column falls back to 1.0.
+**Which lever gets you there changes with tile size.** At 1 KB and 2 KB a single transfer at a time is exactly as fast as the copy loop, to within a fraction of a percent, and the win comes entirely from keeping two in flight: 1.84x and 1.81x. One small transfer cannot cover memory latency on its own, and two overlapping ones can. By 8 KB a single transfer is already large enough to saturate, so the second one stops paying and the pipelining column drops to 0.98x. Below 4 KB the counter is doing the work; at 8 KB and above the engine is.
 
-Put differently: with two transfers in flight and a 4 KB tile the engine reaches 10,793 GB/s, within a percent of the best the reference kernel manages. A tile copy driven this way does saturate memory. But you only get there by keeping more than one in flight, and that is a property of the wait threshold rather than of the DMA engine.
+Put differently: a 4 KB tile with two transfers in flight reaches 10,878 GB/s, and an 8 KB tile reaches 10,809 GB/s with just one. Both are within a percent of the best the reference kernel manages. A tile copy driven this way does saturate memory. But you only get there by keeping more than one in flight, and that is a property of the wait threshold rather than of the DMA engine.
 
 The same effect shows up in the reference measurement, which is what convinced me it is real. A simple read kernel with no unrolling sits at about 8,900 GB/s however many workgroups you launch; unrolling it so each thread has two loads outstanding takes it to 10,900. Whether you get memory-level parallelism from unrolling a load loop or from a second outstanding tensor transfer, the machine wants more than one request in flight per thread of control.
 
@@ -248,7 +250,7 @@ The out-of-bounds behaviour is more useful than it first looks. Zero on read, dr
 
 And the counter matters as much as the engine does. A copy engine you had to fully drain before computing would only save you some instructions. Being able to say "wait until only one is still outstanding" is what turns it into a pipeline.
 
-The measurements bear that out. A single transfer at a time is no faster than a hand-written copy loop until the tile gets big; two in flight is worth about 1.8x at small tiles. The engine is the boring half of the feature.
+The measurements bear that out at small tiles. Below 4 KB a single transfer is no faster than a hand-written copy loop, and the entire win comes from keeping two in flight. Once tiles reach 8 KB the engine saturates memory by itself and the counter stops mattering. Which of the two is doing the work depends on how much data you move per instruction.
 
 ---
 
