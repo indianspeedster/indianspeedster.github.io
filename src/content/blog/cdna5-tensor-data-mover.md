@@ -204,7 +204,7 @@ There's one more piece for the common case where one wave fetches and many waves
 
 All of the above is what the manual promises. Here is what an MI450 (gfx1250, 256 CUs, ROCm 10.1) does when you ask it.
 
-The benchmark fills LDS as fast as it can, three ways: one transfer at a time, two in flight using the counter threshold, and a hand-written copy loop where all 256 threads move float4s. Every workgroup sweeps its own 4 MB slice of a 16 GB buffer so nothing is served out of cache. For reference, a plain streaming read on this machine peaks at about 8,700 GB/s.
+The benchmark fills LDS as fast as it can, three ways: one transfer at a time, two in flight using the counter threshold, and a hand-written copy loop where all 256 threads move float4s. Every workgroup sweeps its own 4 MB slice of a 16 GB buffer so nothing is served out of cache. For reference, the best plain streaming read I could get on this machine is about 10,900 GB/s, and the best write about 10,600 GB/s.
 
 | Tile | One at a time | Two in flight | Copy loop | Pipelining gains |
 |---|---|---|---|---|
@@ -220,7 +220,9 @@ Two things jump out.
 
 **The counter is where the speed is.** Going from "wait for everything" to "wait until only one is outstanding" is worth 1.8x at 1 KB and 2 KB. One small transfer can't cover memory latency on its own; two overlapping ones can. By 8 KB a single transfer is already big enough to saturate and the second one stops helping, which is why the last column falls back to 1.0.
 
-Put differently: the pipelined column reaches roughly 9.8 TB/s, at or above the streaming-read peak, so a tile copy driven this way does saturate memory. But you only get there by keeping more than one in flight, and that's a property of S_WAIT_TENSORCNT N, not of the DMA engine.
+Put differently: with two transfers in flight and a 4 KB tile the engine reaches 10,793 GB/s, which is essentially the 10,900 GB/s roof. A tile copy driven this way does saturate memory. But you only get there by keeping more than one in flight, and that is a property of the wait threshold rather than of the DMA engine.
+
+The same effect shows up in the reference measurement, which is what convinced me it is real. A simple read kernel with no unrolling sits at about 8,900 GB/s however many workgroups you launch; unrolling it so each thread has two loads outstanding takes it to 10,900. Whether you get memory-level parallelism from unrolling a load loop or from a second outstanding tensor transfer, the machine wants more than one request in flight per thread of control.
 
 The rest of the behaviour matched the manual. Padding skipped exactly one DWORD after every eight, as the encodings say. Gather pulled scattered rows into LDS in index order, handled repeated indices, and worked with unsorted indices too; the one out-of-range index I fed it came back zero-filled even unsorted, though since the manual only guarantees that for non-decreasing lists I wouldn't lean on it.
 
