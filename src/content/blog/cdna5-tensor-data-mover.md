@@ -201,4 +201,139 @@ Whether it delivers in practice is a hardware question, and I haven't had a CDNA
 
 ---
 
+## Appendix: the details this skipped
+
+Everything above is the working mental model. This part is the reference material you need if you're actually filling in a descriptor by hand, pulled from §10.11 of the manual and its neighbours.
+
+### Instruction encoding
+
+Both tensor instructions use the VIMAGE encoding, with most of its fields either repurposed or forced to a constant. The ones that matter are the four VADDR slots, which hold **SGPR** addresses despite the name.
+
+| Field | Meaning |
+|---|---|
+| VADDR0 | SGPR base of a 4-SGPR block: D# group 0 |
+| VADDR1 | SGPR base of an 8-SGPR block: D# group 1 |
+| VADDR2 | SGPR base of a 4-SGPR block: D# group 2, or NULL |
+| VADDR3 | SGPR base of a 4-SGPR block: D# group 3, or NULL |
+| VADDR4 | unused, set to NULL (0x7C) |
+| SCOPE, TH, NV | memory scope, temporal hint, non-volatile |
+
+That's 4 + 8 = 12 SGPRs for a 2D copy and 20 for the full 5D form. VADDR2 and VADDR3 must both be NULL or both be set; you cannot supply group 2 without group 3. Passing NULL behaves as though you had pointed at zeroed SGPRs, and pointing both at the same block is legal if you want group 3 to duplicate group 2.
+
+Tensor instructions may not appear in a clause. If your assembler groups memory instructions into clauses for issue efficiency, these have to sit outside them.
+
+### Address generation
+
+Element size lives in data_size, log2-encoded in two bits: 0 is 1 byte, 1 is 2, 2 is 4, 3 is 8. The manual's pseudocode decodes it as `dataSize = (1 << D#.data_size)`, while the address formulas a page earlier write `D#.data_size *` as though the field held a byte count. Take the pseudocode as authoritative.
+
+```c
+global_addr[2d] = D#.global_addr + dataSize * (x + y * D#.tensor_dim0_stride)
+
+global_addr[3d] = D#.global_addr + dataSize * (x
+                + y * D#.tensor_dim0_stride
+                + z * D#.tensor_dim1_stride)
+
+global_addr[4d] = D#.global_addr + dataSize * (x
+                + y * D#.tensor_dim0_stride
+                + z * D#.tensor_dim1_stride
+                + zz * D#.tensor_dim2_stride)
+```
+
+Strides are **cumulative**, not per-dimension increments you multiply together. tensor_dim1_stride already contains whatever tensor_dim0_stride contributed, so if your instinct is to write `z * dim0 * dim1`, that multiplication isn't happening in hardware. You supply the product.
+
+The stride fields are 48 bits wide in elements, against a 57-bit global_addr, so neither will be your limit.
+
+The manual's own pseudocode for a 3D load, including the padding step:
+
+```c
+Laddr = D#.lds_addr        // LDS write pointer
+bytesStored = 0            // bytes written since last pad
+dataSize = (1 << D#.data_size)
+
+for Z = 0..D#.tile_dim2
+  for Y = 0..D#.tile_dim1
+    Maddr = D#.global_addr + dataSize * (y * tensor_dim0_stride
+                                       + z * tensor_dim1_stride)
+    for X = 0..D#.tile_dim0
+        LDS[Laddr] = Memory[Maddr]      // dataSize sequential bytes
+        Maddr += dataSize
+        Laddr += dataSize
+        bytesStored += dataSize
+        if (D#.pad_enable && (bytesStored >> 3) >= (1 << D#.pad_interval))
+            bytesStored = 0
+            Laddr += D#.pad_amount
+```
+
+Two things to read out of it. There is no LDS-side stride field at all, so padding is the only way to get a non-contiguous destination layout. And dimension 0 is contiguous in both spaces, which is where your coalescing lives, so it wants to be the fast-varying dimension of the memory layout.
+
+Those loop bounds bother me slightly: `for X = 0..D#.tile_dim0` reads as tile_dim0 + 1 iterations, which contradicts tile_dim0 being "tile dimension 0 in elements." I take it as loose pseudocode for a half-open range, but it's the kind of off-by-one worth confirming against silicon.
+
+### Padding encodings
+
+| Field | Bits | Encoding |
+|---|---|---|
+| pad_enable | 1 | off / on |
+| pad_interval | 3 | power of two: 0 is 2 DWORDs, 1 is 4, up to 7 meaning 256 |
+| pad_amount | 7 | offset by one: 0 is 1 DWORD, 1 is 2, up to 127 meaning 128 |
+
+Constraints:
+
+- pad_amount and pad_interval must **both** be zero or **both** be non-zero. Anything else "produce[s] unpredictable results," which is neither zero padding nor an error. Since zero in each field means one and two DWORDs respectively, the setting you would naturally reach for as "smallest possible padding" is exactly the illegal one unless padding is switched off entirely.
+- Padding is expressed in DWORDs while the rest of the descriptor works in data_size elements. For an FP8 tile, one unit of padding is four elements.
+- tile_dim0 must be a multiple of 4 bytes for padding to work properly.
+- Padding that would run past the workgroup's LDS allocation is ignored rather than faulting, so an over-padded descriptor degrades into a differently laid out tile instead of an error you would notice.
+
+The second use for padding, beyond bank conflicts, is transposes: the manual describes it as laying data out "in a pattern that may be easier for matrix transpose." CDNA5 has DS_LOAD_TR16_B128 and friends (§11.2.4) to transpose on the way from LDS into VGPRs, and choosing a padding stride that makes those loads conflict-free costs nothing at copy time.
+
+### Completion and ordering
+
+TENSORcnt is 6 bits, so up to 63 outstanding transfers per wave. The manual's three ordering guarantees:
+
+> Tensor-Done is returned once per instruction, not per memory transfer. Tensor instructions complete in-order with other Tensor instructions from the same wave (both loads and stores stay in-order), but are unordered with instructions from other waves. Tensor instructions are unordered with respect to other types of memory instructions.
+
+Completion is per-instruction, so the engine may split a tile into a hundred memory transactions and you still see exactly one decrement once all of them land. There is no partial completion to observe.
+
+Same-wave transfers are FIFO, loads and stores together, which is stronger than ASYNCcnt gives you (there, loads and stores complete out of order relative to each other).
+
+The third is the trap: TDM is unordered against every other memory type. A GLOBAL_STORE issued before a TENSOR_LOAD_TO_LDS from the same wave has no defined ordering against it.
+
+One side effect worth knowing: §3.2.2.1 lets the hardware skip vector memory instructions when EXEC == 0, but only when LOADcnt, STOREcnt, ASYNCcnt and TENSORcnt are all zero. An outstanding transfer suppresses that optimization for the whole wave.
+
+### The barrier arrive
+
+Set atomic_barrier_enable and supply atomic_barrier_address, a 64-bit-aligned LDS location stored as bits [18:3] with the low three implied.
+
+> A tensor op may optionally request that an LDS atomic occur after the tensor completes by setting D#.atomic_barrier_enable. When set, after a tensor operation completes it sends DS_ATOMIC_ASYNC_BARRIER_ARRIVE to signal its completion.
+
+CDNA5's LDS barriers (§11.2.2) are split-phase counting barriers with a pending count and a phase. When the count rolls under, hardware wakes sleeping waves in the workgroup and reloads the count. The arrive is also how the engine keeps successive descriptors from one wave ordered against each other at the LDS end.
+
+### Mode details
+
+**Multicast.** workgroup_mask is 16 bits, one per workgroup-in-cluster. It applies to loads only; for TENSOR_STORE_FROM_LDS the field is ignored. It must be zero when the wave is not in a cluster, which the manual states twice, suggesting a real correctness hazard rather than a benign no-op. The underlying mechanism is a rendezvous with a timeout: every masked workgroup is expected to make the same request, and data returns once they all have or the timeout fires, with late arrivals getting their own separate broadcast. early_timeout tells the GL1 to return data as soon as GL2 supplies it, to whoever has shown up. Multicast loads force-miss the WGP$ regardless of scope and temporal hints.
+
+**Iteration.** The extra fields are global_addr_increment and lds_addr_increment, both in elements, plus iterate_count where 0 means iterate once and 255 means 256 times. 2D and 3D only. Turning it on overloads three group-2 fields: tensor_dim3 becomes lds_addr_increment, tensor_dim2_stride becomes global_addr_increment, and tile_dim3 becomes iterate_count. Those are exactly the fields a 4D or 5D tensor needs, which is why the two can't be combined. iterate_enable is ignored outright when gather mode is on.
+
+**Gather.** Groups 2 and 3 become a list of row indices: 16 at 16 bits each, or 8 at 32 bits. tile_dim1 is redefined as how many indices are valid, and each row comes back as height 1 by width tile_dim0. tile_dim2 and tile_dim1_stride are ignored. Bounds checking against tensor_dim1 still happens, so an out-of-range index gives a zero-filled row rather than a fault. The same index list applied to a store gives you scatter. 2D only. And the caveat from the body, in the manual's own words:
+
+> Random index selection is supported; indices are not required to be strictly increasing and may repeat. However, correct handling of out-of-bounds (OOB) accesses only occurs when each index is greater than or equal to the previous index.
+
+### Faults and edge cases
+
+MEMVIOL is reported if a tile address falls outside the wave's LDS allocation (and only when LDS_CONFIG.ADDR_OUT_OF_RANGE_REPORTING == 1), or if the global address lands outside the global aperture, meaning scratch, LDS or the hole.
+
+> MEMVIOL does not cause the TDM to abort — it continues processing the entire descriptor and return MEMVIOL to the wave when it's done. Memviol and XNACK-error is reported once for the entire TDM operation, not per data transfer.
+
+XNACK-retry is absorbed by the engine, so page faults on the DMA path resolve without the wave's involvement. XNACK-error can still surface, for a write to a read-only page for instance, and it is explicitly imprecise: "the wave cannot rewind the PC to the faulting instructions."
+
+Group 0 carries five fields (count, is_restore, is_store, nv and User_null) all marked "User: must set to zero." They exist because the same descriptor format is reused by the context save and restore machinery, and is_restore = 1 lets the restore path override the instruction's own load/store direction. Junk in those bits doesn't give you a bad tile, it gives you a differently-typed operation. The type field in bits [127:126] must be 2 ("image"), so a descriptor built from zeroed registers isn't valid at all.
+
+Two ways to silently do nothing: tile_dim0 == 0 makes the tensor a NOP, and count == 0 means "NULL tensor, no memory is copied, no atomic_barrier sent." The second is worse, since it also never signals the barrier your consumers are asleep on.
+
+tile_dim1 through tile_dim4 use 0 for "dimension unused" and 1..Max for a real extent, so there's no way to express a legitimately empty higher dimension.
+
+In-flight DMA is part of saved wave state. There's a message, RTN_SAVE_WAVE_HAS_TDM, to "inform the CWSR machine this wave needs to be saved and has outstanding TDM ops," and the group-0 count field carries separate user and context-restore meanings. VMID or pipeline kill stops all descriptors for the affected waves, and killed ops still return done so TENSORcnt drains, so a wave being torn down won't deadlock on a wait.
+
+
+---
+
 **References.** Quotations and field details come from AMD's *"CDNA5" Instruction Set Architecture Reference Guide*, mainly §10.11 (Tensor Data Mover Instructions), with supporting material from §2.3 (Workgroup Clusters), §5.7 (Data Dependency Resolution), §10.7 (Multicast Load), §10.8 (Asynchronous Memory Load and Store) and §11.1–11.2 (Local Data Share Operations).
