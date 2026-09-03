@@ -204,48 +204,39 @@ There's one more piece for the common case where one wave fetches and many waves
 
 All of the above is what the manual promises. Here is what an MI450 (gfx1250, 256 CUs, ROCm 10.1) does when you ask it.
 
-One caveat on the absolute numbers before the table, because it is a large one.
+One caveat on the absolute numbers before the table, because it took me three tries to get right.
 
-The memory subsystem on this machine is physically the shipping configuration. HIP reports a 24,576-bit bus and 432 GB, which works out to twelve HBM4 stacks of 2,048 bits and 36 GB each, matching the advertised MI450-series part. What is not shipping is the clock. Memory runs at 1.90 GHz, so 3.8 Gbps per pin, giving a ceiling of 3,072 bytes x 3.8 GT/s = about 11,700 GB/s. The measured 10,917 GB/s is 94% of that, so the reference kernel really is close to saturating this box.
+This machine reports a 24,576-bit bus and 432 GB, which is twelve 2,048-bit HBM4 stacks of 36 GB, matching the advertised MI450-series configuration. Its memory clock sits at 1,900 MHz and does not move: idle and under a fully saturating load it reads the same, on a single DPM level. The core is the part that looks unusual, capped at 1,100 MHz and drooping to about 1,048 MHz under sustained load.
 
-The advertised parts need much more than 3.8 Gbps per pin. An MI450 at its stated 19.6 to 20.0 TB/s needs about 6.4 to 6.5, and the MI455X at 23.3 TB/s needs about 7.6. This part is therefore running memory at roughly 60% of base-spec data rate and, against the flagship, at exactly half: 1.90 GHz is precisely half the 3.79 GHz that 23.3 TB/s implies, which is what a half-rate bring-up mode looks like. Core and fabric clocks are similarly low at 1.1 GHz with two entries in the table.
+I first read that as underclocked memory. It isn't. While a streaming kernel sustains 10,789 GB/s, the memory controller reports 46% utilization, which puts the interface's own capability near 23,400 GB/s, essentially the 23.3 TB/s an MI455X advertises. The memory is running at speed. What my measurements are limited by is the other side: 256 compute units at roughly 1 GHz issuing requests, which is not enough to keep that interface busy.
 
-So every GB/s figure below belongs to this machine, not to the product, and a production part should have roughly twice the memory bandwidth to play with. The ratios between the three methods are a fairer thing to carry away, since all three ran on the same box in the same session.
+So the figures below are not a memory-bandwidth roof. They are what this machine's shader core can pull through a memory system with plenty of headroom left. That has a specific consequence for reading them: where a method saturates here, it has saturated the *request rate*, not the memory, and a part with a faster core would go higher. I have deliberately not projected the numbers onto a shipping part, because the limit I hit is one I cannot scale with confidence.
 
-The benchmark fills LDS as fast as it can, three ways: one transfer at a time, two in flight using the counter threshold, and a hand-written copy loop where all 256 threads move float4s. Every workgroup sweeps its own 4 MB slice of a 16 GB buffer so nothing is served out of cache. For reference, the best plain streaming read I could get here is 10,905 GB/s and the best write 10,509 GB/s, against that 11,700 GB/s ceiling, so the reference kernel is already at about 93% of what this configuration can do.
+The ratios between the three methods are the durable part. All three ran on the same machine in the same session against the same limit.
+
+The benchmark fills LDS as fast as it can, three ways: one transfer at a time, two in flight using the counter threshold, and a hand-written copy loop where all 256 threads move float4s. Every workgroup sweeps its own 4 MB slice of a 16 GB buffer so nothing is served out of cache. For reference, the best plain streaming read I could get here is 10,917 GB/s and the best write 10,589 GB/s.
 
 Each row is the mean of four runs, which agreed to within about 1% of each other.
 
-Each figure is followed by what fraction of this machine's 11,674 GB/s ceiling it represents, which is the part that carries over to a full-rate part.
+Each row is the mean of four runs, which agreed with each other to about 1%.
 
 | Tile | One at a time | Two in flight | Copy loop | Two-in-flight gains | Best vs copy loop |
 |---|---|---|---|---|---|
-| 1 KB | 2,349 (20%) | 4,323 (37%) | 2,349 (20%) | 1.84x | 1.84x |
-| 2 KB | 4,213 (36%) | 7,644 (66%) | 4,207 (36%) | 1.81x | 1.82x |
-| 4 KB | 7,418 (64%) | **10,878 (93%)** | 7,255 (62%) | 1.47x | 1.50x |
-| 8 KB | **10,809 (93%)** | 10,597 (91%) | 7,899 (68%) | 0.98x | 1.37x |
-| 16 KB | **10,667 (91%)** | 10,457 (90%) | 8,241 (71%) | 0.98x | 1.29x |
+| 1 KB | 2,349 GB/s | 4,323 GB/s | 2,349 GB/s | 1.84x | 1.84x |
+| 2 KB | 4,213 GB/s | 7,644 GB/s | 4,207 GB/s | 1.81x | 1.82x |
+| 4 KB | 7,418 GB/s | 10,878 GB/s | 7,255 GB/s | 1.47x | 1.50x |
+| 8 KB | 10,809 GB/s | 10,597 GB/s | 7,899 GB/s | 0.98x | 1.37x |
+| 16 KB | 10,667 GB/s | 10,457 GB/s | 8,241 GB/s | 0.98x | 1.29x |
 
-The bold entries are the ones sitting on the memory roof, and those are the only figures that can be honestly projected onto a shipping part, since they are limited purely by bandwidth. Scaling them by the ratio of ceilings gives roughly what a full-rate device should reach:
-
-| Configuration | Memory ceiling | Saturating tile copy |
-|---|---|---|
-| This machine, 1.90 GHz | 11,674 GB/s | ~10,800 GB/s |
-| MI450 base, 19.6 TB/s | 19,600 GB/s | ~18,100 GB/s |
-| MI450 base, 20.0 TB/s | 20,000 GB/s | ~18,500 GB/s |
-| MI455X, 23.3 TB/s | 23,300 GB/s | ~21,600 GB/s |
-
-The other rows are the interesting ones and they cannot be scaled that way. A 1 KB tile issued one at a time reaches 20% of the roof, and it does so because it is waiting on memory latency, not because it has run out of bandwidth. Giving that configuration twice the bandwidth changes very little, since latency is what it is short of. The copy loop is in a similar position for a different reason, topping out around 70% because it is limited by how fast 256 threads can issue addresses, which depends on the core clock rather than the memory clock, and this machine's core is downclocked too.
-
-If anything, a full-rate part should make the pipelining result *more* pronounced, not less. Doubling bandwidth halves the time a transfer spends moving data without halving the latency in front of it, so the tile size at which one transfer stops covering its own latency moves upward. On this box the crossover sits between 4 and 8 KB; on a shipping part I would expect it higher, with two-in-flight still paying at tile sizes where it has stopped paying here.
+The ceiling everything runs into, around 10,800 GB/s, is the same number a plain streaming read reaches on this machine, and as noted above it is a request-rate limit rather than a memory one.
 
 Two things jump out.
 
-**The copy loop never gets near the memory roof, and the engine always does.** The hand-written version tops out around 8,200 GB/s no matter how big the tile gets. The engine reaches about 10,800, which is the ceiling this machine's reference streaming kernel also hits. That gap is the whole benefit, and it is worth between 1.3x and 1.8x depending on the tile.
+**The copy loop never gets near the ceiling, and the engine always does.** The hand-written version tops out around 8,200 GB/s no matter how big the tile gets. The engine reaches about 10,800, matching what this machine's reference streaming kernel manages. That gap is the whole benefit, and it is worth between 1.3x and 1.8x depending on the tile.
 
 **Which lever gets you there changes with tile size.** At 1 KB and 2 KB a single transfer at a time is exactly as fast as the copy loop, to within a fraction of a percent, and the win comes entirely from keeping two in flight: 1.84x and 1.81x. One small transfer cannot cover memory latency on its own, and two overlapping ones can. By 8 KB a single transfer is already large enough to saturate, so the second one stops paying and the pipelining column drops to 0.98x. Below 4 KB the counter is doing the work; at 8 KB and above the engine is.
 
-Put differently: a 4 KB tile with two transfers in flight reaches 10,878 GB/s, and an 8 KB tile reaches 10,809 GB/s with just one. Both are within a percent of the best the reference kernel manages. A tile copy driven this way does saturate memory. But you only get there by keeping more than one in flight, and that is a property of the wait threshold rather than of the DMA engine.
+Put differently: a 4 KB tile with two transfers in flight reaches 10,878 GB/s, and an 8 KB tile reaches 10,809 GB/s with just one. Both are within a percent of the best the reference kernel manages, so the engine gets as much out of this machine as a hand-tuned read loop does. A tile copy driven this way does saturate memory. But you only get there by keeping more than one in flight, and that is a property of the wait threshold rather than of the DMA engine.
 
 The same effect shows up in the reference measurement, which is what convinced me it is real. A simple read kernel with no unrolling sits at about 8,900 GB/s however many workgroups you launch; unrolling it so each thread has two loads outstanding takes it to 10,900. Whether you get memory-level parallelism from unrolling a load loop or from a second outstanding tensor transfer, the machine wants more than one request in flight per thread of control.
 
