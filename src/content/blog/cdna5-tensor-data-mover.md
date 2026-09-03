@@ -216,13 +216,28 @@ The benchmark fills LDS as fast as it can, three ways: one transfer at a time, t
 
 Each row is the mean of four runs, which agreed to within about 1% of each other.
 
+Each figure is followed by what fraction of this machine's 11,674 GB/s ceiling it represents, which is the part that carries over to a full-rate part.
+
 | Tile | One at a time | Two in flight | Copy loop | Two-in-flight gains | Best vs copy loop |
 |---|---|---|---|---|---|
-| 1 KB | 2,349 GB/s | 4,323 GB/s | 2,349 GB/s | 1.84x | 1.84x |
-| 2 KB | 4,213 GB/s | 7,644 GB/s | 4,207 GB/s | 1.81x | 1.82x |
-| 4 KB | 7,418 GB/s | 10,878 GB/s | 7,255 GB/s | 1.47x | 1.50x |
-| 8 KB | 10,809 GB/s | 10,597 GB/s | 7,899 GB/s | 0.98x | 1.37x |
-| 16 KB | 10,667 GB/s | 10,457 GB/s | 8,241 GB/s | 0.98x | 1.29x |
+| 1 KB | 2,349 (20%) | 4,323 (37%) | 2,349 (20%) | 1.84x | 1.84x |
+| 2 KB | 4,213 (36%) | 7,644 (66%) | 4,207 (36%) | 1.81x | 1.82x |
+| 4 KB | 7,418 (64%) | **10,878 (93%)** | 7,255 (62%) | 1.47x | 1.50x |
+| 8 KB | **10,809 (93%)** | 10,597 (91%) | 7,899 (68%) | 0.98x | 1.37x |
+| 16 KB | **10,667 (91%)** | 10,457 (90%) | 8,241 (71%) | 0.98x | 1.29x |
+
+The bold entries are the ones sitting on the memory roof, and those are the only figures that can be honestly projected onto a shipping part, since they are limited purely by bandwidth. Scaling them by the ratio of ceilings gives roughly what a full-rate device should reach:
+
+| Configuration | Memory ceiling | Saturating tile copy |
+|---|---|---|
+| This machine, 1.90 GHz | 11,674 GB/s | ~10,800 GB/s |
+| MI450 base, 19.6 TB/s | 19,600 GB/s | ~18,100 GB/s |
+| MI450 base, 20.0 TB/s | 20,000 GB/s | ~18,500 GB/s |
+| MI455X, 23.3 TB/s | 23,300 GB/s | ~21,600 GB/s |
+
+The other rows are the interesting ones and they cannot be scaled that way. A 1 KB tile issued one at a time reaches 20% of the roof, and it does so because it is waiting on memory latency, not because it has run out of bandwidth. Giving that configuration twice the bandwidth changes very little, since latency is what it is short of. The copy loop is in a similar position for a different reason, topping out around 70% because it is limited by how fast 256 threads can issue addresses, which depends on the core clock rather than the memory clock, and this machine's core is downclocked too.
+
+If anything, a full-rate part should make the pipelining result *more* pronounced, not less. Doubling bandwidth halves the time a transfer spends moving data without halving the latency in front of it, so the tile size at which one transfer stops covering its own latency moves upward. On this box the crossover sits between 4 and 8 KB; on a shipping part I would expect it higher, with two-in-flight still paying at tile sizes where it has stopped paying here.
 
 Two things jump out.
 
