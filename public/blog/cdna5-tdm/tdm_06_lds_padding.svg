@@ -1,0 +1,136 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1040" height="600" viewBox="0 0 1040 600" font-family="Excalifont, cursive">
+<style>@font-face{font-family:"Excalifont";src:url("../../fonts/Excalifont-Regular.ttf") format("truetype");font-style:normal;font-weight:100 900;font-display:block}text{font-family:"Excalifont",cursive}</style>
+<defs><marker id="ah" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L8,3 L0,6 Z" fill="#1e1e1e"/></marker><marker id="ahs" markerWidth="10" markerHeight="10" refX="0" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M8,0 L0,3 L8,6 Z" fill="#1e1e1e"/></marker></defs>
+<rect width="1040" height="600" fill="#ffffff"/>
+<text x="40" y="44.7" font-size="26" text-anchor="start" fill="#1e1e1e" font-weight="bold">Padding: how one wasted slot per row removes a bank conflict</text>
+<text x="520" y="86.6" font-size="13.5" text-anchor="middle" fill="#495057" font-weight="normal">Four lanes in one wave read column 0 of different tile rows in one LDS instruction. Which bank each lane reaches decides</text>
+<text x="520" y="103.47" font-size="13.5" text-anchor="middle" fill="#495057" font-weight="normal">whether they happen together or one after another.</text>
+<text x="310" y="150" font-size="16" text-anchor="middle" fill="#1e1e1e" font-weight="bold" font-family="Excalifont, cursive">no padding</text>
+<text x="310" y="172" font-size="12.5" text-anchor="middle" fill="#868e96" font-weight="normal">a row is 64 DWORDs, so every row starts at bank 0</text>
+<text x="128" y="217" font-size="12.5" text-anchor="end" fill="#868e96" font-weight="normal">row 0</text>
+<rect x="138" y="196" width="42" height="30" fill="#ffe3e3" stroke="#ced4da" stroke-width="1"/>
+<text x="159.0" y="217" font-size="11" text-anchor="middle" fill="#c92a2a" font-weight="bold">col 0</text>
+<rect x="180" y="196" width="42" height="30" fill="#ffffff" stroke="#ced4da" stroke-width="1"/>
+<rect x="222" y="196" width="42" height="30" fill="#ffffff" stroke="#ced4da" stroke-width="1"/>
+<rect x="264" y="196" width="42" height="30" fill="#ffffff" stroke="#ced4da" stroke-width="1"/>
+<rect x="306" y="196" width="42" height="30" fill="#ffffff" stroke="#ced4da" stroke-width="1"/>
+<rect x="348" y="196" width="42" height="30" fill="#ffffff" stroke="#ced4da" stroke-width="1"/>
+<line x1="145.5" y1="228" x2="159.0" y2="396" stroke="#c92a2a" stroke-width="1.5" marker-end="url(#ah)" />
+<text x="128" y="257" font-size="12.5" text-anchor="end" fill="#868e96" font-weight="normal">row 1</text>
+<rect x="138" y="236" width="42" height="30" fill="#ffe3e3" stroke="#ced4da" stroke-width="1"/>
+<text x="159.0" y="257" font-size="11" text-anchor="middle" fill="#c92a2a" font-weight="bold">col 0</text>
+<rect x="180" y="236" width="42" height="30" fill="#ffffff" stroke="#ced4da" stroke-width="1"/>
+<rect x="222" y="236" width="42" height="30" fill="#ffffff" stroke="#ced4da" stroke-width="1"/>
+<rect x="264" y="236" width="42" height="30" fill="#ffffff" stroke="#ced4da" stroke-width="1"/>
+<rect x="306" y="236" width="42" height="30" fill="#ffffff" stroke="#ced4da" stroke-width="1"/>
+<rect x="348" y="236" width="42" height="30" fill="#ffffff" stroke="#ced4da" stroke-width="1"/>
+<line x1="154.5" y1="268" x2="159.0" y2="396" stroke="#c92a2a" stroke-width="1.5" marker-end="url(#ah)" />
+<text x="128" y="297" font-size="12.5" text-anchor="end" fill="#868e96" font-weight="normal">row 2</text>
+<rect x="138" y="276" width="42" height="30" fill="#ffe3e3" stroke="#ced4da" stroke-width="1"/>
+<text x="159.0" y="297" font-size="11" text-anchor="middle" fill="#c92a2a" font-weight="bold">col 0</text>
+<rect x="180" y="276" width="42" height="30" fill="#ffffff" stroke="#ced4da" stroke-width="1"/>
+<rect x="222" y="276" width="42" height="30" fill="#ffffff" stroke="#ced4da" stroke-width="1"/>
+<rect x="264" y="276" width="42" height="30" fill="#ffffff" stroke="#ced4da" stroke-width="1"/>
+<rect x="306" y="276" width="42" height="30" fill="#ffffff" stroke="#ced4da" stroke-width="1"/>
+<rect x="348" y="276" width="42" height="30" fill="#ffffff" stroke="#ced4da" stroke-width="1"/>
+<line x1="163.5" y1="308" x2="159.0" y2="396" stroke="#c92a2a" stroke-width="1.5" marker-end="url(#ah)" />
+<text x="128" y="337" font-size="12.5" text-anchor="end" fill="#868e96" font-weight="normal">row 3</text>
+<rect x="138" y="316" width="42" height="30" fill="#ffe3e3" stroke="#ced4da" stroke-width="1"/>
+<text x="159.0" y="337" font-size="11" text-anchor="middle" fill="#c92a2a" font-weight="bold">col 0</text>
+<rect x="180" y="316" width="42" height="30" fill="#ffffff" stroke="#ced4da" stroke-width="1"/>
+<rect x="222" y="316" width="42" height="30" fill="#ffffff" stroke="#ced4da" stroke-width="1"/>
+<rect x="264" y="316" width="42" height="30" fill="#ffffff" stroke="#ced4da" stroke-width="1"/>
+<rect x="306" y="316" width="42" height="30" fill="#ffffff" stroke="#ced4da" stroke-width="1"/>
+<rect x="348" y="316" width="42" height="30" fill="#ffffff" stroke="#ced4da" stroke-width="1"/>
+<line x1="172.5" y1="348" x2="159.0" y2="396" stroke="#c92a2a" stroke-width="1.5" marker-end="url(#ah)" />
+<rect x="138" y="398" width="42" height="34" fill="#ffe3e3" stroke="#ced4da" stroke-width="1"/>
+<text x="159.0" y="420" font-size="12.5" text-anchor="middle" fill="#c92a2a" font-weight="bold">0</text>
+<rect x="180" y="398" width="42" height="34" fill="#ffffff" stroke="#ced4da" stroke-width="1"/>
+<text x="201.0" y="420" font-size="12.5" text-anchor="middle" fill="#868e96" font-weight="normal">1</text>
+<rect x="222" y="398" width="42" height="34" fill="#ffffff" stroke="#ced4da" stroke-width="1"/>
+<text x="243.0" y="420" font-size="12.5" text-anchor="middle" fill="#868e96" font-weight="normal">2</text>
+<rect x="264" y="398" width="42" height="34" fill="#ffffff" stroke="#ced4da" stroke-width="1"/>
+<text x="285.0" y="420" font-size="12.5" text-anchor="middle" fill="#868e96" font-weight="normal">3</text>
+<rect x="306" y="398" width="42" height="34" fill="#ffffff" stroke="#ced4da" stroke-width="1"/>
+<text x="327.0" y="420" font-size="12.5" text-anchor="middle" fill="#868e96" font-weight="normal">4</text>
+<rect x="348" y="398" width="42" height="34" fill="#ffffff" stroke="#ced4da" stroke-width="1"/>
+<text x="369.0" y="420" font-size="12.5" text-anchor="middle" fill="#868e96" font-weight="normal">5</text>
+<rect x="390" y="398" width="42" height="34" fill="#ffffff" stroke="#ced4da" stroke-width="1"/>
+<text x="411.0" y="420" font-size="12.5" text-anchor="middle" fill="#868e96" font-weight="normal">6</text>
+<rect x="432" y="398" width="42" height="34" fill="#ffffff" stroke="#ced4da" stroke-width="1"/>
+<text x="453.0" y="420" font-size="12.5" text-anchor="middle" fill="#868e96" font-weight="normal">7</text>
+<text x="128" y="420" font-size="12.5" text-anchor="end" fill="#868e96" font-weight="normal">bank</text>
+<text x="310" y="462" font-size="13.5" text-anchor="middle" fill="#c92a2a" font-weight="bold">4 reads, 1 bank: the hardware serializes them</text>
+<text x="810" y="150" font-size="16" text-anchor="middle" fill="#1e1e1e" font-weight="bold" font-family="Excalifont, cursive">pad_amount field 0 means 1 DWORD</text>
+<text x="810" y="172" font-size="12.5" text-anchor="middle" fill="#868e96" font-weight="normal">each row starts one slot later than the last</text>
+<text x="628" y="217" font-size="12.5" text-anchor="end" fill="#868e96" font-weight="normal">row 0</text>
+<rect x="638" y="196" width="42" height="30" fill="#ebfbee" stroke="#ced4da" stroke-width="1"/>
+<text x="659.0" y="217" font-size="11" text-anchor="middle" fill="#2b8a3e" font-weight="bold">col 0</text>
+<rect x="680" y="196" width="42" height="30" fill="#ffffff" stroke="#ced4da" stroke-width="1"/>
+<rect x="722" y="196" width="42" height="30" fill="#ffffff" stroke="#ced4da" stroke-width="1"/>
+<rect x="764" y="196" width="42" height="30" fill="#ffffff" stroke="#ced4da" stroke-width="1"/>
+<rect x="806" y="196" width="42" height="30" fill="#ffffff" stroke="#ced4da" stroke-width="1"/>
+<rect x="848" y="196" width="42" height="30" fill="#ffffff" stroke="#ced4da" stroke-width="1"/>
+<line x1="659.0" y1="228" x2="659.0" y2="396" stroke="#2b8a3e" stroke-width="1.5" marker-end="url(#ah)" />
+<text x="628" y="257" font-size="12.5" text-anchor="end" fill="#868e96" font-weight="normal">row 1</text>
+<rect x="680" y="236" width="42" height="30" fill="#ebfbee" stroke="#ced4da" stroke-width="1"/>
+<text x="701.0" y="257" font-size="11" text-anchor="middle" fill="#2b8a3e" font-weight="bold">col 0</text>
+<rect x="722" y="236" width="42" height="30" fill="#ffffff" stroke="#ced4da" stroke-width="1"/>
+<rect x="764" y="236" width="42" height="30" fill="#ffffff" stroke="#ced4da" stroke-width="1"/>
+<rect x="806" y="236" width="42" height="30" fill="#ffffff" stroke="#ced4da" stroke-width="1"/>
+<rect x="848" y="236" width="42" height="30" fill="#ffffff" stroke="#ced4da" stroke-width="1"/>
+<rect x="890" y="236" width="42" height="30" fill="#ffffff" stroke="#ced4da" stroke-width="1"/>
+<rect x="638" y="236" width="42" height="30" fill="#f1f3f5" stroke="#868e96" stroke-width="1" stroke-dasharray="3 3"/>
+<text x="659.0" y="257" font-size="9.5" text-anchor="middle" fill="#868e96" font-weight="normal">pad</text>
+<line x1="701.0" y1="268" x2="701.0" y2="396" stroke="#2b8a3e" stroke-width="1.5" marker-end="url(#ah)" />
+<text x="628" y="297" font-size="12.5" text-anchor="end" fill="#868e96" font-weight="normal">row 2</text>
+<rect x="722" y="276" width="42" height="30" fill="#ebfbee" stroke="#ced4da" stroke-width="1"/>
+<text x="743.0" y="297" font-size="11" text-anchor="middle" fill="#2b8a3e" font-weight="bold">col 0</text>
+<rect x="764" y="276" width="42" height="30" fill="#ffffff" stroke="#ced4da" stroke-width="1"/>
+<rect x="806" y="276" width="42" height="30" fill="#ffffff" stroke="#ced4da" stroke-width="1"/>
+<rect x="848" y="276" width="42" height="30" fill="#ffffff" stroke="#ced4da" stroke-width="1"/>
+<rect x="890" y="276" width="42" height="30" fill="#ffffff" stroke="#ced4da" stroke-width="1"/>
+<rect x="932" y="276" width="42" height="30" fill="#ffffff" stroke="#ced4da" stroke-width="1"/>
+<rect x="638" y="276" width="42" height="30" fill="#f1f3f5" stroke="#868e96" stroke-width="1" stroke-dasharray="3 3"/>
+<text x="659.0" y="297" font-size="9.5" text-anchor="middle" fill="#868e96" font-weight="normal">pad</text>
+<rect x="680" y="276" width="42" height="30" fill="#f1f3f5" stroke="#868e96" stroke-width="1" stroke-dasharray="3 3"/>
+<text x="701.0" y="297" font-size="9.5" text-anchor="middle" fill="#868e96" font-weight="normal">pad</text>
+<line x1="743.0" y1="308" x2="743.0" y2="396" stroke="#2b8a3e" stroke-width="1.5" marker-end="url(#ah)" />
+<text x="628" y="337" font-size="12.5" text-anchor="end" fill="#868e96" font-weight="normal">row 3</text>
+<rect x="764" y="316" width="42" height="30" fill="#ebfbee" stroke="#ced4da" stroke-width="1"/>
+<text x="785.0" y="337" font-size="11" text-anchor="middle" fill="#2b8a3e" font-weight="bold">col 0</text>
+<rect x="806" y="316" width="42" height="30" fill="#ffffff" stroke="#ced4da" stroke-width="1"/>
+<rect x="848" y="316" width="42" height="30" fill="#ffffff" stroke="#ced4da" stroke-width="1"/>
+<rect x="890" y="316" width="42" height="30" fill="#ffffff" stroke="#ced4da" stroke-width="1"/>
+<rect x="932" y="316" width="42" height="30" fill="#ffffff" stroke="#ced4da" stroke-width="1"/>
+<rect x="974" y="316" width="42" height="30" fill="#ffffff" stroke="#ced4da" stroke-width="1"/>
+<rect x="638" y="316" width="42" height="30" fill="#f1f3f5" stroke="#868e96" stroke-width="1" stroke-dasharray="3 3"/>
+<text x="659.0" y="337" font-size="9.5" text-anchor="middle" fill="#868e96" font-weight="normal">pad</text>
+<rect x="680" y="316" width="42" height="30" fill="#f1f3f5" stroke="#868e96" stroke-width="1" stroke-dasharray="3 3"/>
+<text x="701.0" y="337" font-size="9.5" text-anchor="middle" fill="#868e96" font-weight="normal">pad</text>
+<rect x="722" y="316" width="42" height="30" fill="#f1f3f5" stroke="#868e96" stroke-width="1" stroke-dasharray="3 3"/>
+<text x="743.0" y="337" font-size="9.5" text-anchor="middle" fill="#868e96" font-weight="normal">pad</text>
+<line x1="785.0" y1="348" x2="785.0" y2="396" stroke="#2b8a3e" stroke-width="1.5" marker-end="url(#ah)" />
+<rect x="638" y="398" width="42" height="34" fill="#ebfbee" stroke="#ced4da" stroke-width="1"/>
+<text x="659.0" y="420" font-size="12.5" text-anchor="middle" fill="#2b8a3e" font-weight="bold">0</text>
+<rect x="680" y="398" width="42" height="34" fill="#ebfbee" stroke="#ced4da" stroke-width="1"/>
+<text x="701.0" y="420" font-size="12.5" text-anchor="middle" fill="#2b8a3e" font-weight="bold">1</text>
+<rect x="722" y="398" width="42" height="34" fill="#ebfbee" stroke="#ced4da" stroke-width="1"/>
+<text x="743.0" y="420" font-size="12.5" text-anchor="middle" fill="#2b8a3e" font-weight="bold">2</text>
+<rect x="764" y="398" width="42" height="34" fill="#ebfbee" stroke="#ced4da" stroke-width="1"/>
+<text x="785.0" y="420" font-size="12.5" text-anchor="middle" fill="#2b8a3e" font-weight="bold">3</text>
+<rect x="806" y="398" width="42" height="34" fill="#ffffff" stroke="#ced4da" stroke-width="1"/>
+<text x="827.0" y="420" font-size="12.5" text-anchor="middle" fill="#868e96" font-weight="normal">4</text>
+<rect x="848" y="398" width="42" height="34" fill="#ffffff" stroke="#ced4da" stroke-width="1"/>
+<text x="869.0" y="420" font-size="12.5" text-anchor="middle" fill="#868e96" font-weight="normal">5</text>
+<rect x="890" y="398" width="42" height="34" fill="#ffffff" stroke="#ced4da" stroke-width="1"/>
+<text x="911.0" y="420" font-size="12.5" text-anchor="middle" fill="#868e96" font-weight="normal">6</text>
+<rect x="932" y="398" width="42" height="34" fill="#ffffff" stroke="#ced4da" stroke-width="1"/>
+<text x="953.0" y="420" font-size="12.5" text-anchor="middle" fill="#868e96" font-weight="normal">7</text>
+<text x="628" y="420" font-size="12.5" text-anchor="end" fill="#868e96" font-weight="normal">bank</text>
+<text x="810" y="462" font-size="13.5" text-anchor="middle" fill="#2b8a3e" font-weight="bold">4 reads, 4 banks: they all go at once</text>
+<rect x="60" y="492" width="920" height="82" rx="12" fill="#fff9db" stroke="#e8590c" stroke-width="1.5"/>
+<text x="520" y="520.19" font-size="12.5" text-anchor="middle" fill="#e8590c" font-weight="normal">The copy engine inserts the gap while it writes, so the skew costs nothing at copy time. Both settings are encoded rather than literal:</text>
+<text x="520" y="535.81" font-size="12.5" text-anchor="middle" fill="#e8590c" font-weight="normal">pad_interval 0 means 2 DWORDs and pad_amount 0 means 1 DWORD, they must both be zero or both non-zero, and padding applies</text>
+<text x="520" y="551.44" font-size="12.5" text-anchor="middle" fill="#e8590c" font-weight="normal">on the way into LDS only. There is no de-padding on the way back out.</text>
+</svg>

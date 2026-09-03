@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="520" viewBox="0 0 960 520" font-family="Excalifont, cursive">
+<style>@font-face{font-family:"Excalifont";src:url("../../fonts/Excalifont-Regular.ttf") format("truetype");font-style:normal;font-weight:100 900;font-display:block}text{font-family:"Excalifont",cursive}</style>
+<defs><marker id="ah" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L8,3 L0,6 Z" fill="#1e1e1e"/></marker><marker id="ahs" markerWidth="10" markerHeight="10" refX="0" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M8,0 L0,3 L8,6 Z" fill="#1e1e1e"/></marker></defs>
+<rect width="960" height="520" fill="#ffffff"/>
+<text x="40" y="44.7" font-size="26" text-anchor="start" fill="#1e1e1e" font-weight="bold">Multicast: one HBM fetch, many LDS copies</text>
+<rect x="50" y="200" width="170" height="110" rx="12" fill="#ffd8a8" stroke="#1e1e1e" stroke-width="2"/>
+<text x="135.0" y="249.4" font-size="14" text-anchor="middle" fill="#1e1e1e" font-weight="normal">Global memory</text>
+<text x="135.0" y="266.9" font-size="14" text-anchor="middle" fill="#1e1e1e" font-weight="normal">the shared A-panel</text>
+<line x1="220" y1="255" x2="288" y2="255" stroke="#1e1e1e" stroke-width="2" marker-end="url(#ah)" />
+<text x="254" y="242" font-size="12" text-anchor="middle" fill="#495057" font-weight="bold">one fetch</text>
+<rect x="288" y="196" width="250" height="118" rx="12" fill="#d0bfff" stroke="#1e1e1e" stroke-width="2"/>
+<text x="413.0" y="242.19" font-size="12.5" text-anchor="middle" fill="#1e1e1e" font-weight="bold">TDM multicast</text>
+<text x="413.0" y="257.81" font-size="12.5" text-anchor="middle" fill="#1e1e1e" font-weight="bold">mask selects workgroups 0-3</text>
+<text x="413.0" y="273.44" font-size="12.5" text-anchor="middle" fill="#1e1e1e" font-weight="bold">CLUSTER_LOAD_ASYNC</text>
+<line x1="538" y1="255" x2="700" y2="136" stroke="#7048e8" stroke-width="2.5" marker-end="url(#ah)" />
+<rect x="700" y="110" width="210" height="52" rx="12" fill="#b2f2bb" stroke="#1e1e1e" stroke-width="2"/>
+<text x="805.0" y="139.15" font-size="14" text-anchor="middle" fill="#1e1e1e" font-weight="normal">WG 0 LDS: same tile</text>
+<line x1="538" y1="255" x2="700" y2="216" stroke="#7048e8" stroke-width="2.5" marker-end="url(#ah)" />
+<rect x="700" y="190" width="210" height="52" rx="12" fill="#b2f2bb" stroke="#1e1e1e" stroke-width="2"/>
+<text x="805.0" y="219.15" font-size="14" text-anchor="middle" fill="#1e1e1e" font-weight="normal">WG 1 LDS: same tile</text>
+<line x1="538" y1="255" x2="700" y2="296" stroke="#7048e8" stroke-width="2.5" marker-end="url(#ah)" />
+<rect x="700" y="270" width="210" height="52" rx="12" fill="#b2f2bb" stroke="#1e1e1e" stroke-width="2"/>
+<text x="805.0" y="299.15" font-size="14" text-anchor="middle" fill="#1e1e1e" font-weight="normal">WG 2 LDS: same tile</text>
+<line x1="538" y1="255" x2="700" y2="376" stroke="#7048e8" stroke-width="2.5" marker-end="url(#ah)" />
+<rect x="700" y="350" width="210" height="52" rx="12" fill="#b2f2bb" stroke="#1e1e1e" stroke-width="2"/>
+<text x="805.0" y="379.15" font-size="14" text-anchor="middle" fill="#1e1e1e" font-weight="normal">WG 3 LDS: same tile</text>
+<text x="805" y="448" font-size="14" text-anchor="middle" fill="#868e96" font-weight="normal">…  up to 16 workgroups in the cluster</text>
+<rect x="684" y="94" width="242" height="330" rx="12" fill="none" stroke="#868e96" stroke-width="2" stroke-dasharray="6 5"/>
+<text x="805" y="82" font-size="13" text-anchor="middle" fill="#868e96" font-weight="normal">selected workgroups in one cluster</text>
+<text x="480" y="469.19" font-size="12.5" text-anchor="middle" fill="#495057" font-weight="normal">All selected workgroups issue the same request; the TDM waits for arrivals or a timeout.</text>
+<text x="480" y="484.81" font-size="12.5" text-anchor="middle" fill="#495057" font-weight="normal">The shared tile is fetched once from HBM and copied into every selected workgroup's LDS.</text>
+<text x="480" y="500.44" font-size="12.5" text-anchor="middle" fill="#495057" font-weight="normal">Loads only: stores ignore the mask. Outside a cluster, workgroup_mask must be zero.</text>
+</svg>
