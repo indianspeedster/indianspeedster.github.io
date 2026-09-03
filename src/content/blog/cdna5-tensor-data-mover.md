@@ -10,15 +10,9 @@ Most of a GEMM kernel isn't multiplication. You compute a per-lane global addres
 
 CDNA5 moves that work into hardware. The Tensor Data Mover is a DMA engine sitting next to each pair of SIMDs. You hand it a description of a tensor and a tile within it, and it walks the tensor in global memory on its own and writes the tile into LDS. It uses no VGPRs, ignores the EXEC mask, and runs in parallel with whatever the wave does next.
 
-What follows is a walk through §10.11 of the *"CDNA5" Instruction Set Architecture* manual, along with the parts scattered elsewhere that you need to make sense of it: the counter model in §5.7, workgroup clusters in §2.3, multicast loads in §10.7, the async LDS barrier in §11.2.2. The manual presents the feature as a table of bitfields, which is the right thing for a reference document to do and not much help if what you want is a programming model.
-
 > **TL;DR.** TDM is a per-SIMD-pair DMA engine driven by a Tensor DMA Descriptor (D#) built out of 12 or 20 SGPRs. Two instructions, TENSOR_LOAD_TO_LDS and TENSOR_STORE_FROM_LDS, hand it that descriptor and return immediately. Completion is tracked with a new counter, TENSORcnt, drained by S_WAIT_TENSORCNT. The descriptor covers a tensor of up to 5 dimensions and a tile within it, and the engine handles the address walk, out-of-bounds clamping (reads return zero, writes are dropped), optional LDS padding for bank conflicts or transposes, multicast of one tile into the LDS of up to 16 workgroups in a cluster, iteration over strided rows, and a 2D gather/scatter mode carrying up to 16 row indices per instruction. It can fire an LDS barrier arrive when it finishes, so consumer waves get woken without anyone polling. All of which exists so the tile for iteration *n+1* can move while the matrix core works on tile *n*.
 
-Nine diagrams below carry a lot of the load. Each one is hand-drawn in Excalidraw and the .excalidraw source sits next to the .svg in [public/blog/cdna5-tdm/](https://github.com/indianspeedster/indianspeedster.github.io/tree/main/public/blog/cdna5-tdm) if you want to pull one apart.
-
 > **This is a documentation read, not a benchmark.** Everything here comes from AMD's published CDNA5 ISA manual. I haven't run any of it on hardware; CDNA5 parts weren't in my hands when I wrote this. Where I say something should be fast, I mean the architecture is built that way, not that I measured it. Nothing here is endorsed or reviewed by AMD, and anywhere I call something a spec ambiguity, that's my reading rather than an official erratum.
-
-Five parts: why the engine exists, the programming model, addressing, the optional modes, and synchronization plus the sharp edges.
 
 ---
 
@@ -40,7 +34,7 @@ That inverts the cost structure. The per-lane paths get more expensive as tiles 
 
 ![Three columns comparing the VGPR round trip, async global-to-LDS copies and the Tensor Data Mover, each showing the path from global memory down to LDS and the instruction, register and counter cost.](/blog/cdna5-tdm/tdm_01_three_paths.svg "The three paths differ in where the data stops on its way to LDS. The VGPR round trip parks it in the register file and pays a second instruction to push it out again. The async copy skips the register file but still computes one address per lane. TDM takes neither route: the shape of the transfer lives in a descriptor, so the instruction count stops scaling with the tile.")
 
-The middle row of that diagram is where the actual distinction lives. TDM isn't faster at moving a given 128 bits. It's that the first two columns make the wave responsible for addressing and the third one doesn't.
+The distinction that matters is where the addressing happens. TDM isn't faster at moving a given 128 bits. It's that the first two columns make the wave responsible for addressing and the third one doesn't.
 
 | | VGPR round trip | Async to LDS | TDM |
 |---|---|---|---|
@@ -68,7 +62,7 @@ If you've used Hopper's Tensor Memory Accelerator this will feel familiar: a des
 
 The granularity is a SIMD pair, so not a whole WGP and not a single SIMD. That matters for thinking about contention: waves on the two SIMDs behind one TDM share its issue bandwidth. There are config registers (TDM_CONTROL) governing what the manual calls "arbitration and TDM policies," which tells you the arbitration exists because multiple waves will be queueing descriptors at one engine. The policy knobs aren't documented, so I won't speculate about them.
 
-Tiles land in the LDS half of the WGP's local memory unit. §11.1 gives the budget: 320 KB of LDS and 64 KB of WGP$ sharing one physical array, split into 64 banks of 4 bytes each. Remember the bank count, it comes back under padding.
+Tiles land in the LDS half of the WGP's local memory unit. §11.1 gives the budget: 320 KB of LDS and 64 KB of WGP$ sharing one physical array, split into 64 banks of 4 bytes each. The bank count is what makes LDS padding worth having.
 
 ### The two instructions
 
@@ -362,7 +356,7 @@ The out-of-bounds handling surprised me most. Zero-fill on read, drop on write, 
 
 And the counter matters as much as the engine. A copy engine you had to fully drain before computing would be a modest instruction-count win. TENSORcnt with a <= threshold, plus barrier-arrive-on-completion, is what lets you keep several transfers in flight, order them against each other, and hand the completion signal to hardware that wakes sleeping consumers.
 
-Whether any of it delivers is a hardware question. Given time on a CDNA5 part I'd measure two things first: descriptor setup cost against tile size, to find where a single TDM instruction starts beating a hand-rolled async-copy loop, and what multicast is really worth on a GEMM whose A-panel is shared across a full 16-workgroup cluster. Until then this is a reading of the manual, and the manual is unusually clear about what it's promising.
+Whether any of it delivers is a hardware question. Given time on a CDNA5 part I'd measure two things first: descriptor setup cost against tile size, to find where a single TDM instruction starts beating a hand-rolled async-copy loop, and what multicast is really worth on a GEMM whose A-panel is shared across a full 16-workgroup cluster.
 
 ---
 
