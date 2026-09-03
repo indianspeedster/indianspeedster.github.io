@@ -92,13 +92,13 @@ Both use the VIMAGE encoding, though almost every VIMAGE field is either repurpo
 
 ![The four descriptor groups laid out as columns, group 0 with four SGPRs, group 1 with eight, groups 2 and 3 with four each, listing their fields, plus callouts showing how iterate_enable and gather_mode reinterpret groups 2 and 3.](/blog/cdna5-tdm/tdm_03_descriptor.svg "The D# in full. The two callouts on the right are what makes this a tagged union rather than a struct: turning on iteration or gather quietly changes what the group 2 and 3 registers mean.")
 
-A 2D transfer needs groups 0 and 1, so 12 SGPRs. Anything up to 5D needs all four groups, so 20. `VADDR2` and `VADDR3` have to both be `NULL` or both be non-`NULL`; you can't supply group 2 without group 3. Passing `NULL` behaves as though you'd pointed at zeroed SGPRs, and the manual explicitly allows pointing `VADDR2` and `VADDR3` at the same block if you want group 3 to duplicate group 2.
+A 2D transfer needs groups 0 and 1, so 12 SGPRs. Anything up to 5D needs all four groups, so 20. The last two slots have to both be NULL or both be set; you can't supply group 2 without group 3. Passing NULL behaves as though you'd pointed at zeroed SGPRs, and the manual explicitly allows aiming both at the same block if you want group 3 to duplicate group 2.
 
 Twelve to twenty SGPRs isn't free out of a budget of 106, but it's a one-time cost for a descriptor you build once and re-issue many times, and it comes out of the scalar file rather than the vector file your accumulator is competing for.
 
 ### The counter, and why it's the point
 
-CDNA5 already tracks outstanding memory work with `LOADcnt`, `STOREcnt`, `DScnt`, `KMcnt`, `ASYNCcnt` and `XCNT`. TDM adds one more:
+CDNA5 already tracks outstanding memory work with a family of counters: LOADcnt, STOREcnt, DScnt, KMcnt, ASYNCcnt and XCNT. TDM adds one more:
 
 > **TENSORcnt** — 6 bits — Tensor (matrix) DMA operation count. Incremented by 1 for each TDM transfer issued. Decremented by 1 for each operation completed.
 
@@ -116,7 +116,7 @@ The third rule is the one that will catch people. TDM is unordered against every
 
 One more restriction, easy to miss: tensor instructions may not occur in a clause. If your assembler or compiler groups memory instructions into clauses for issue efficiency, TDM ops have to sit outside them.
 
-`TENSORcnt` also turns up somewhere unrelated. §3.2.2.1 says the hardware may skip vector memory instructions when `EXEC == 0`, but only when `LOADcnt`, `STOREcnt`, `ASYNCcnt` and `TENSORcnt` are all zero. An outstanding TDM transfer suppresses that optimization for the whole wave. Not something you'd design around, but it shows how far into the wave state machine the counter reaches.
+The counter also turns up somewhere unrelated. §3.2.2.1 says the hardware may skip vector memory instructions when `EXEC == 0`, but only when every one of those counters, TENSORcnt included, is zero. An outstanding TDM transfer suppresses that optimization for the whole wave. Not something you'd design around, but it shows how far into the wave state machine the counter reaches.
 
 ---
 
@@ -222,7 +222,7 @@ Three constraints the manual is firm about:
 
 Padding applies to memory→LDS transfers only. There's no de-padding on the way out, and `pad_enable` is ignored for `TENSOR_STORE_FROM_LDS`, so a padded round trip means unpadding by hand.
 
-`pad_amount` and `pad_interval` must both be zero or both be non-zero. Anything else "produce[s] unpredictable results," which is not zero padding and not an error either. Since `pad_amount = 0` means one DWORD and `pad_interval = 0` means two DWORDs, the configuration you'd naturally reach for as "smallest possible padding" is exactly the illegal one unless `pad_enable` is also off. Set `pad_enable` on purpose.
+The amount and the interval must both be zero or both be non-zero. Anything else "produce[s] unpredictable results," which is not zero padding and not an error either. Since zero in each field means one DWORD and two DWORDs respectively, the configuration you'd naturally reach for as "smallest possible padding" is exactly the illegal one unless padding is switched off entirely. Set `pad_enable` on purpose.
 
 `tile_dim0` must be a multiple of 4 bytes for padding to work properly, so multiples of 4 at 1-byte elements, multiples of 2 at 2-byte.
 
@@ -266,13 +266,13 @@ The extra fields are `global_addr_increment` and `lds_addr_increment`, both in e
 
 Think of it as a strided-slice primitive: sub-sampling a feature map, taking every k-th row of a matrix, deinterleaving a packed layout. The sort of thing that otherwise costs an outer loop and a descriptor rebuild per step.
 
-What it costs is register real estate. Turning iteration on overloads three group-2 fields. `tensor_dim3` becomes `lds_addr_increment`, `tensor_dim2_stride` becomes `global_addr_increment`, and `tile_dim3` becomes `iterate_count`. Those are exactly the fields a 4D or 5D tensor needs, so iteration and high dimensionality are effectively mutually exclusive, which lines up with iteration being restricted to 2D and 3D in the first place. `iterate_enable` is also ignored outright when gather mode is on.
+What it costs is register real estate. Turning iteration on overloads three group-2 fields: tensor_dim3 becomes the LDS increment, tensor_dim2_stride becomes the global increment, and tile_dim3 becomes the iteration count. Those are exactly the fields a 4D or 5D tensor needs, so iteration and high dimensionality are effectively mutually exclusive, which lines up with iteration being restricted to 2D and 3D in the first place. `iterate_enable` is also ignored outright when gather mode is on.
 
 ### Gather and scatter: row indices in the descriptor
 
 This is the mode I didn't expect to find. Set `Gather Mode` in group 0 and descriptor groups 2 and 3 stop being tensor dimensions and become a list of row indices: 16 of them at 16 bits each, or 8 at 32 bits.
 
-`tile_dim1` is redefined to say how many of those indices are valid. Each row is fetched as height 1 by width `tile_dim0`. `tile_dim2` and `tile_dim1_stride` are ignored. `tensor_dim1` still does its bounds checking, so an out-of-range index gives you a zero-filled row rather than a fault.
+`tile_dim1` is redefined to say how many of those indices are valid, and each row comes back as height 1 by width `tile_dim0`. The second tile dimension and its stride are ignored. Bounds checking against tensor_dim1 still happens, so an out-of-range index gives you a zero-filled row rather than a fault.
 
 ![A 2D tensor with four non-adjacent rows highlighted, an index list held in descriptor groups 2 and 3, and those four rows landing compacted and adjacent in LDS.](/blog/cdna5-tdm/tdm_08_gather.svg "Gather mode spends the group 2 and 3 registers on row indices instead of tensor dimensions. Scattered rows in memory arrive contiguous in LDS, in the order the index list names them.")
 
@@ -344,7 +344,7 @@ A faulting descriptor runs to completion and you learn that something went wrong
 
 XNACK is handled internally, mostly. TDM absorbs XNACK-retry itself, so page faults on the DMA path get resolved without the wave's involvement. XNACK-error can still surface, for a write to a read-only page for instance, and it's explicitly imprecise: "the wave cannot rewind the PC to the faulting instructions."
 
-Reserved fields aren't decorative. Group 0 carries `count`, `is_restore`, `is_store`, `nv` and `User_null`, all marked "User: must set to zero," and they exist because the same descriptor format is reused by the context save/restore machinery. `is_restore = 1` lets the restore path override the instruction's own load/store direction. Garbage in those bits doesn't give you a bad tile, it gives you a differently-typed operation. Zero them explicitly instead of trusting whatever the SGPRs held. Relatedly, `type` in bits [127:126] must be 2 ("image"), so a descriptor built from zeroed registers isn't a valid descriptor at all.
+Reserved fields aren't decorative. Group 0 carries five fields (count, is_restore, is_store, nv and User_null) all marked "User: must set to zero," and they exist because the same descriptor format is reused by the context save/restore machinery. `is_restore = 1` lets the restore path override the instruction's own load/store direction. Garbage in those bits doesn't give you a bad tile, it gives you a differently-typed operation. Zero them explicitly instead of trusting whatever the SGPRs held. Relatedly, the type field in bits [127:126] must be 2 ("image"), so a descriptor built from zeroed registers isn't a valid descriptor at all.
 
 Two fields silently disable the whole transfer. `tile_dim0 == 0` makes the tensor a NOP, and `count == 0` means "NULL tensor, no memory is copied, no atomic_barrier sent." The second one is worse, because it also never signals the barrier your consumers are asleep on.
 
