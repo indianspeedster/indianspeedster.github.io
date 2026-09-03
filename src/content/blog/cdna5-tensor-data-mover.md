@@ -204,7 +204,13 @@ There's one more piece for the common case where one wave fetches and many waves
 
 All of the above is what the manual promises. Here is what an MI450 (gfx1250, 256 CUs, ROCm 10.1) does when you ask it.
 
-One caveat on the absolute numbers before the table. The machine I had access to is running its memory at 1.90 GHz on a 24,576-bit bus, which puts its ceiling at about 11,700 GB/s. A production MI450 is specified around 20.7 TB/s, which needs roughly 3.37 GHz on that bus, so this part is at some 56% of production memory speed. Its core and fabric clocks are similarly low, at 1.1 GHz with only two levels in the table, which is what an early-silicon configuration looks like. Treat every GB/s figure below as belonging to this machine rather than to the product, and note that the ratios between the three methods are unaffected, since they all ran on the same box.
+One caveat on the absolute numbers before the table, because it is a large one.
+
+The memory subsystem on this machine is physically the shipping configuration. HIP reports a 24,576-bit bus and 432 GB, which works out to twelve HBM4 stacks of 2,048 bits and 36 GB each, matching the advertised MI450-series part. What is not shipping is the clock. Memory runs at 1.90 GHz, so 3.8 Gbps per pin, giving a ceiling of 3,072 bytes x 3.8 GT/s = about 11,700 GB/s. The measured 10,917 GB/s is 94% of that, so the reference kernel really is close to saturating this box.
+
+The advertised parts need much more than 3.8 Gbps per pin. An MI450 at its stated 19.6 to 20.0 TB/s needs about 6.4 to 6.5, and the MI455X at 23.3 TB/s needs about 7.6. This part is therefore running memory at roughly 60% of base-spec data rate and, against the flagship, at exactly half: 1.90 GHz is precisely half the 3.79 GHz that 23.3 TB/s implies, which is what a half-rate bring-up mode looks like. Core and fabric clocks are similarly low at 1.1 GHz with two entries in the table.
+
+So every GB/s figure below belongs to this machine, not to the product, and a production part should have roughly twice the memory bandwidth to play with. The ratios between the three methods are a fairer thing to carry away, since all three ran on the same box in the same session.
 
 The benchmark fills LDS as fast as it can, three ways: one transfer at a time, two in flight using the counter threshold, and a hand-written copy loop where all 256 threads move float4s. Every workgroup sweeps its own 4 MB slice of a 16 GB buffer so nothing is served out of cache. For reference, the best plain streaming read I could get here is 10,905 GB/s and the best write 10,509 GB/s, against that 11,700 GB/s ceiling, so the reference kernel is already at about 93% of what this configuration can do.
 
