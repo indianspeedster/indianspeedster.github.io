@@ -1,6 +1,6 @@
 ---
 title: "MXFP8: Microscale Floating Point 8 — How Block-Level Scaling Makes 8-Bit Training Work"
-description: "A from-first-principles look at the MXFP8 datatype: why regular FP8 isn't enough, how a shared power-of-two scale per 32-element block restores FP32-like reach, the hardware plumbing on CDNA4 and Blackwell, and why the block size is 32."
+description: "A from-first-principles look at the MXFP8 datatype: why regular FP8 isn't enough, how a shared power-of-two scale per 32-element block restores FP32-like reach, the hardware plumbing on AMD CDNA4, and why the block size is 32."
 date: 2026-06-08
 tags: ["GPU", "AMD", "FP8", "MXFP8", "quantization", "LLM", "CDNA4"]
 draft: false
@@ -14,7 +14,7 @@ Training LLMs in 8-bit floating point has an obvious appeal: halve the bytes per
 
 > **Why 32?** Every halving of the block size doubles the scale overhead — 3.1% at 32, 6.25% at 16, 12.5% at 8. Every doubling lets a single outlier set the scale for twice as many neighbours. 32 is the point the OCP MX specification settled on after empirical studies across training and inference workloads, and it maps cleanly onto hardware. (Part 4 has the details.)
 
-I want to unpack MXFP8 from silicon to software — the bit layout, the math, how it maps to matrix hardware on AMD MI355X (CDNA4) and NVIDIA Blackwell, and the reasoning behind the block size.
+I want to unpack MXFP8 from silicon to software — the bit layout, the math, how it maps to the matrix cores on AMD MI355X (CDNA4), and the reasoning behind the block size.
 
 > **TL;DR.** MXFP8 packs 8-bit elements into blocks of 32 with one shared E8M0 scale per block. Storage is 1.03 bytes/element (1 byte of data + 1/32 byte of scale) vs 2 bytes for BF16. The block scale extends the representable range from E4M3's [2⁻⁹, 448] to roughly [2⁻¹³⁶, 2¹³⁶] across the tensor — FP32-like reach, though any *single* block still spans only E4M3's width. On CDNA4, scaled MFMA instructions consume MXFP8 operands and their scales natively, at twice the BF16 matrix rate, accumulating in FP32. It's a ~2× memory and compute win for transformer training and inference.
 
@@ -158,10 +158,6 @@ The CDNA4 (gfx950) scaled MFMA instructions:
 | `v_mfma_scale_f32_32x32x64_f8f6f4` | 32×32 | 64 | 2 | FP32 |
 
 The `f8f6f4` suffix is literal: the same instructions take FP8 (E4M3 or E5M2), FP6 or FP4 operands, with the element format selected per operand — so MXFP8, MXFP6 and MXFP4 all run through one datapath.
-
-### Blackwell (B200/GB200): block-scaled tcgen05.mma
-
-On NVIDIA's side, native MX support arrived with **Blackwell**, not Hopper. Blackwell's fifth-generation tensor cores expose block-scaled MMA through `tcgen05.mma` with `kind::mxf8f6f4` and a scale-vector operand — the same OCP MX layout of 32-element blocks with E8M0 scales. Hopper's `wgmma` supports plain FP8 (E4M3/E5M2) only; any per-block scaling on Hopper (for example DeepSeek-V3's 1×128 / 128×128 blockwise FP8) has to be applied in software, outside the tensor-core instruction.
 
 ### Throughput comparison
 
