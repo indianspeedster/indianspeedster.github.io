@@ -116,19 +116,19 @@
 
   <line x1="992" y1="198" x2="992" y2="212" stroke="#40c057" stroke-width="1.5" marker-end="url(#arrowGreen)"/>
   <rect x="835" y="215" width="310" height="26" fill="#b2f2bb" stroke="#40c057" stroke-width="1.5" rx="4"/>
-  <text x="990" y="233" text-anchor="middle" font-size="13" fill="#2b8a3e" font-weight="600">Only that 31-element block</text>
+  <text x="990" y="233" text-anchor="middle" font-size="13" fill="#2b8a3e" font-weight="600">Only that 32-element block</text>
 
   <rect x="860" y="260" width="260" height="24" fill="#e9ecef" stroke="#868e96" stroke-width="1" rx="3"/>
   <text x="990" y="277" text-anchor="middle" font-size="11" fill="#2b8a3e">scales: E8M0, one per block</text>
 
-  <text x="990" y="315" text-anchor="middle" font-size="11" fill="#2b8a3e">Damage radius: 31 elements only ✓</text>
+  <text x="990" y="315" text-anchor="middle" font-size="11" fill="#2b8a3e">Damage radius: one 32-element block ✓</text>
 
   <!-- ===== DAMAGE SUMMARY ===== -->
   <rect x="30" y="395" width="1140" height="65" fill="#f8f9fa" stroke="#dee2e6" stroke-width="1.5" rx="8"/>
   <text x="60" y="420" font-size="14" font-weight="600" fill="#1e1e1e">Outlier Damage Radius — Same Outlier (5120), Three Approaches</text>
-  <text x="60" y="445" font-size="13" fill="#c92a2a">Per-tensor: 5000+ elements corrupted — entire tensor's scale shifts</text>
-  <text x="60" y="465" font-size="13" fill="#e8590c">Per-token: Entire row corrupted — other rows OK</text>
-  <text x="460" y="445" font-size="13" fill="#2b8a3e" font-weight="600">MXFP8: 31 elements affected — rest of tensor at full precision ✓</text>
+  <text x="60" y="447" font-size="13" fill="#c92a2a">Per-tensor: small values across the tensor underflow</text>
+  <text x="440" y="447" font-size="13" fill="#e8590c">Per-token: entire row corrupted — other rows OK</text>
+  <text x="800" y="447" font-size="13" fill="#2b8a3e" font-weight="600">MXFP8: only the outlier's own block ✓</text>
 
   <!-- ===== SPECTRUM ===== -->
   <text x="600" y="510" text-anchor="middle" font-size="15" font-weight="600" fill="#1e1e1e">The Spectrum of Scale Granularity</text>

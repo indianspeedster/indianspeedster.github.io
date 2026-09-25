@@ -1,22 +1,22 @@
 ---
 title: "MXFP8: Microscale Floating Point 8 — How Block-Level Scaling Makes 8-Bit Training Work"
-description: "A from-first-principles look at the MXFP8 datatype: why regular FP8 isn't enough, how per-block scaling stretches 8-bit dynamic range by 2.5×, the hardware plumbing on CDNA4 and Hopper, and the block-size theory behind the design."
+description: "A from-first-principles look at the MXFP8 datatype: why regular FP8 isn't enough, how a shared power-of-two scale per 32-element block restores FP32-like reach, the hardware plumbing on CDNA4 and Blackwell, and why the block size is 32."
 date: 2026-06-08
 tags: ["GPU", "AMD", "FP8", "MXFP8", "quantization", "LLM", "CDNA4"]
 draft: false
 ---
 
-Training LLMs in floating point 8 has an obvious appeal: cut activations in half, halve memory traffic, and double theoretical compute throughput via matrix cores. The catch is that an 8-bit floating-point number has *four exponent bits*. The largest representable value (E4M3) is 448 — fine for gradients that rarely exceed 200 in absolute value, but nowhere near enough for activations that can spike into the thousands. You can step up to E5M2 (max 57344), but then you've only got two mantissa bits left, and your precision goes through the floor.
+Training LLMs in 8-bit floating point has an obvious appeal: halve the bytes per element relative to BF16, halve memory traffic, and double theoretical compute throughput on the matrix cores. The catch is that eight bits leave very little room for an exponent. The common FP8 variant, E4M3, has four exponent bits and tops out at 448 — too little headroom for activations and weights that spread over many orders of magnitude, and too little *footroom* for small gradients. You can step up to E5M2 (max 57344), but then you've only got two mantissa bits left and your precision drops by half.
 
-**MXFP8 solves this by adding a shared scale per block.** Instead of each 8-bit element standing on its own, 32 elements share a single 8-bit power-of-two scale. The per-element values stay in FP8 E4M3, and the scale multiplies the whole block. Net effect: the dynamic range of a 16-bit float, delivered by 8-bit storage.
+**MXFP8 solves this by adding a shared scale per block.** Instead of each 8-bit element standing on its own, 32 elements share a single 8-bit power-of-two scale. The per-element values stay in FP8, and the scale multiplies the whole block. Net effect: across a tensor, FP32-like reach, delivered by 8-bit storage.
 
-> **In one sentence:** MXFP8 stores FP8 values in blocks of 32 elements, where each block shares a power-of-two scaling factor encoded as an 8-bit E8M0 exponent. Every stored element is an E4M3 FP8 number; the block scale multiplies the entire block to recover the original magnitude.
+> **In one sentence:** MXFP8 stores FP8 values in blocks of 32 elements, where each block shares a power-of-two scaling factor encoded as an 8-bit E8M0 exponent. Every stored element is an FP8 number (E4M3 or E5M2 — the OCP spec defines both; E4M3 is the common choice and the one this post uses); the block scale multiplies the entire block to recover the original magnitude.
 
-> **Why 32?** At block size 16, the scale overhead doubles to 6.25% — too much bloat. At 64, the scale gets too coarse: a single exponent stretched across 64 elements can't track rapid magnitude changes, and precision degrades. 32 is the Pareto-optimal point: 3.1% storage overhead vs raw FP8, with per-block granularity fine enough that outlier damage is contained. (Part 4 has the math.)
+> **Why 32?** Every halving of the block size doubles the scale overhead — 3.1% at 32, 6.25% at 16, 12.5% at 8. Every doubling lets a single outlier set the scale for twice as many neighbours. 32 is the point the OCP MX specification settled on after empirical studies across training and inference workloads, and it maps cleanly onto hardware. (Part 4 has the details.)
 
-I want to unpack MXFP8 from silicon to software — the bit layout, the math, how it maps to GPU matrix cores on AMD MI355X (CDNA4) and NVIDIA Hopper, and the block-size theory behind the design.
+I want to unpack MXFP8 from silicon to software — the bit layout, the math, how it maps to matrix hardware on AMD MI355X (CDNA4) and NVIDIA Blackwell, and the reasoning behind the block size.
 
-> **TL;DR.** MXFP8 packs 8-bit elements into blocks of 32 with one shared E8M0 scale per block. Storage is just 1.02 bytes/element (1 byte data + 0.02 byte scale overhead) vs 2 bytes for BF16. The block scale extends the effective dynamic range from [0.00195, 448] to ~[2⁻¹³⁴, 2¹²⁷] — roughly the range of FP32. On CDNA4, MFMA instructions natively consume MXFP8 blocks, feeding the matrix core at double the rate of FP16 while keeping output precision at BF16 or FP32. It's a ~2× memory and compute win for transformer training and inference.
+> **TL;DR.** MXFP8 packs 8-bit elements into blocks of 32 with one shared E8M0 scale per block. Storage is 1.03 bytes/element (1 byte of data + 1/32 byte of scale) vs 2 bytes for BF16. The block scale extends the representable range from E4M3's [2⁻⁹, 448] to roughly [2⁻¹³⁶, 2¹³⁶] across the tensor — FP32-like reach, though any *single* block still spans only E4M3's width. On CDNA4, scaled MFMA instructions consume MXFP8 operands and their scales natively, at twice the BF16 matrix rate, accumulating in FP32. It's a ~2× memory and compute win for transformer training and inference.
 
 ---
 
@@ -24,23 +24,23 @@ I want to unpack MXFP8 from silicon to software — the bit layout, the math, ho
 
 An 8-bit floating-point format makes an existential choice: how do you split your 8 bits between exponent and mantissa?
 
-![Bit layouts for FP32, BF16, E5M2 and E4M3 showing sign, exponent and mantissa field widths alongside their ranges.](/blog/mxfp8/mxfp8_01_bit_layouts.svg "The same eight bits split two ways. E5M2 buys range at 25% precision; E4M3 buys precision but tops out at plus or minus 448.")
+![Bit layouts for FP32, BF16, E5M2 and E4M3 showing sign, exponent and mantissa field widths alongside their ranges.](/blog/mxfp8/mxfp8_01_bit_layouts.svg "The same eight bits split two ways. E5M2 buys range with a 25% relative step; E4M3 halves the step to 12.5% but tops out at plus or minus 448.")
 
 ### E4M3: Range is the bottleneck
 
-E4M3 (4 exponent bits, 3 mantissa bits) is the workhorse. Its positive range spans ~0.00195 to 448. That's 5.2 orders of magnitude — plenty for *weights* that live in a tight distribution around zero, and fine for *gradients* that obey Central Limit Theorem behavior. But **activations** are the problem child. A transformer's attention logits or layer-norm outputs can cross 1000 during training, especially in early steps before the optimizer settles. E4M3 clips them. Worse, E4M3 reserves the bit pattern `0b1111_1xxx` for NaN/Inf (no real values beyond 448), so there *is* no headroom — you just overflow.
+E4M3 (4 exponent bits, 3 mantissa bits) is the workhorse. Its positive range spans 2⁻⁹ ≈ 0.00195 (smallest subnormal; the smallest *normal* is 2⁻⁶ ≈ 0.0156) to 448 — about 5.4 orders of magnitude. That's plenty for a well-behaved slice of a tensor, but not for a whole tensor: transformer activations carry outlier channels orders of magnitude larger than the bulk of the values, and gradients shrink to values far below E4M3's floor. Under the OCP definition, E4M3 has no infinities — only `S.1111.111` encodes NaN, and 448 is `S.1111.110` — so there is no headroom above 448: out-of-range values must saturate to ±448 or become NaN.
 
-The workaround in practice: compute a per-tensor maximum absolute value, divide the whole tensor by it, quantize, then dequantize after the GEMM. This solves the range problem but introduces a **per-tensor quantization error** — one outlier element can crush the precision of every element in the tensor.
+The workaround in practice: compute a per-tensor maximum absolute value, scale the tensor so that maximum lands near 448, quantize, then fold the scale back in after the GEMM. This solves the overflow problem but introduces a **per-tensor quantization error**: one outlier element sets the scale for everyone, pushing the small elements of the tensor down into E4M3's subnormal range or flushing them to zero.
 
 ### E5M2: Precision is the bottleneck
 
-E5M2 (5 exponent bits, 2 mantissa bits) takes the opposite trade. Range jumps to [0.000015, 57344] — 9.5 orders of magnitude, wider than BF16's range. But with only two mantissa bits, the *resolution* is just 25% of the step size. For training, this is catastrophic: gradient accumulation across thousands of steps needs sub-1% precision, not quarter-step granularity.
+E5M2 (5 exponent bits, 2 mantissa bits) takes the opposite trade. Range jumps to [2⁻¹⁶ ≈ 0.000015, 57344] — about 9.6 orders of magnitude, the same range as FP16 (but far narrower than BF16, which shares FP32's 8-bit exponent). With only two mantissa bits, though, adjacent values are 25% apart, so the worst-case rounding error is 12.5%. That is coarse for weights and activations in the forward pass. It is tolerable for gradients — which is why "hybrid" FP8 recipes use E4M3 forward and E5M2 for gradients, always accumulating in higher precision (FP32 master weights, FP32 GEMM accumulators).
 
 ### The fundamental tension
 
-You need ~8 bits of dynamic range (which E4M3 gives you) *and* per-element precision better than 12.5% (which E4M3's 3-bit mantissa delivers at ~2% relative error). The problem is that these 8 bits are doing two jobs — conveying *magnitude* and *detail* — and eight bits simply isn't enough for both across the activation range seen in training.
+You need wide dynamic range *and* fine per-element precision. E4M3's 3-bit mantissa gives a 12.5% relative step (≤6.25% rounding error), which is good enough per element — but then its range is too narrow. These 8 bits are doing two jobs — conveying *magnitude* and *detail* — and eight bits simply isn't enough for both across a whole tensor.
 
-The insight behind MXFP8 is that these two jobs don't need the same density: **magnitude changes slowly across a tensor, while detail varies per element.** Share the magnitude. Keep the detail private.
+The insight behind MXFP8 is that these two jobs don't need the same density: **magnitude only needs to be tracked coarsely — per small neighbourhood — while detail varies per element.** Share the magnitude. Keep the detail private.
 
 ---
 
@@ -48,15 +48,15 @@ The insight behind MXFP8 is that these two jobs don't need the same density: **m
 
 ### The core idea
 
-Split a tensor into contiguous blocks of 32 elements (typically along the inner dimension). Each block gets one shared **scale factor** — an 8-bit power-of-two exponent (E8M0 format: × 2ⁿ, n ranges from −127 to 127). The elements themselves stay in E4M3.
+Split a tensor into contiguous blocks of 32 elements along the reduction (K) dimension of the GEMM. Each block gets one shared **scale factor** — an 8-bit power-of-two exponent in E8M0 format: the stored byte *E* encodes 2^(E−127), so scales range from 2⁻¹²⁷ to 2¹²⁷ (0xFF is reserved for NaN). The elements themselves stay in FP8 (E4M3 here).
 
 ![A 320-value tensor split into ten 32-element blocks, each assigned one shared scale, stored as E4M3 data plus an E8M0 scale.](/blog/mxfp8/mxfp8_02_block_scaling.svg "MXFP8 in three steps: partition into blocks of 32, take each block's max to derive a scale, then quantize the block to E4M3 against it.")
 
 The dequantized value for element *i* in block *j* is:
 
-> **x̂ᵢ = xᵢ(FP8) × 2^scaleⱼ**
+> **x̂ᵢ = xᵢ(FP8) × Xⱼ**
 
-where xᵢ(FP8) is the stored 8-bit E4M3 value and scaleⱼ is the block's shared E8M0 exponent.
+where xᵢ(FP8) is the stored 8-bit E4M3 value and Xⱼ = 2^(Eⱼ−127) is the block's shared scale, decoded from its E8M0 byte Eⱼ.
 
 ### Storage cost
 
@@ -73,17 +73,17 @@ In relative terms:
 - MXFP8: 1.03 bytes/element (3.1% overhead)
 - BF16: 2.0 bytes/element (1.94× larger than MXFP8)
 
-The overhead is why the block size is 32 — at block size 8, overhead jumps to 12.5%; at block size 128, it shrinks to 0.8% but the scale becomes too coarse to track rapid magnitude changes within a row.
+Overhead is one side of the block-size trade: at block size 8 it jumps to 12.5%; at block size 128 it shrinks to 0.8%, but a single outlier then sets the scale for 128 elements.
 
 ### Why E8M0 for the scale?
 
 Most people's first question: *why not just use FP16 or FP32 for the scale?* The answer is threefold:
 
-1. **Power-of-two is free at dequant.** An E8M0 scale represents 2ⁿ for n ∈ [−127, 127]. Multiplying an E4M3 value by 2ⁿ is a single integer exponent addition — no floating-point multiply needed. Hardware loves this.
-2. **One byte per block.** An FP16 scale would cost 2 bytes (6.25% overhead), and FP32 would cost 4 bytes (12.5% overhead). E8M0 keeps it to 1 byte — critical for staying under 2% effective overhead.
-3. **No sign, no mantissa.** The scale has no sign bit (values are always positive) and no mantissa (only exact powers of two). Every bit goes into the exponent, maximizing the dynamic range per byte of scale storage.
+1. **Power-of-two is cheap at dequant.** Multiplying an FP8 value (or a product of two) by 2ⁿ is an exponent adjustment, not a full floating-point multiply. Hardware loves this.
+2. **One byte per block.** An FP16 scale would cost 2 bytes (6.25% overhead), and FP32 would cost 4 bytes (12.5% overhead). E8M0 keeps it to 1 byte per 32 elements — 3.125%.
+3. **No sign, no mantissa.** The scale has no sign bit (scales are always positive) and no mantissa (only exact powers of two). Every bit goes into the exponent, maximizing the dynamic range per byte of scale storage.
 
-Values represent 2ⁿ for n ∈ [−127, 127], so the smallest scale is 2⁻¹²⁷ ≈ 5.88 × 10⁻³⁹ and the largest is 2¹²⁷ ≈ 1.70 × 10³⁸.
+The smallest scale is 2⁻¹²⁷ ≈ 5.88 × 10⁻³⁹ and the largest is 2¹²⁷ ≈ 1.70 × 10³⁸.
 
 Multiply this with E4M3's native range of [0.00195, 448]:
 
@@ -91,105 +91,91 @@ Multiply this with E4M3's native range of [0.00195, 448]:
 |-------|-------------------|-------------------|
 | 2⁻¹²⁷ | 1.1 × 10⁻⁴¹ | 2.6 × 10⁻³⁶ |
 | 2⁰ | 0.00195 | 448 |
-| 2¹²⁷ | 3.3 × 10³⁶ | 7.6 × 10⁴⁰ |
+| 2¹²⁷ | 3.3 × 10³⁵ | 7.6 × 10⁴⁰ |
 
-The effective dynamic range spans ~10⁸¹ — far exceeding FP32's 10³⁸ range. In practice, the per-block scale is chosen as the smallest power-of-two that keeps the block's maximum absolute value under 448, so the effective range is the *union* of the ranges in the table, dominated by whatever the data needs.
+Across all possible scales, representable magnitudes run from ~10⁻⁴¹ to ~10⁴¹ — comparable to FP32 (whose normal range is ~10⁻³⁸ to ~3.4 × 10³⁸). But keep the important caveat in view: **within any one block**, the representable range is still only E4M3's ~5.4 decades, shifted up or down by that block's scale. MXFP8 doesn't make a single block wider; it lets each block put its narrow window wherever its own data lives.
 
-![Log-scale dynamic range bars comparing FP32, BF16, E5M2, E4M3 and MXFP8.](/blog/mxfp8/mxfp8_03_dynamic_range.svg "E4M3 alone spans plus or minus 448. Multiplying by a per-block E8M0 scale restores FP32-like reach: the range comes from the scale, the precision from the data.")
+![Log-scale dynamic range bars comparing FP32, BF16, E5M2, E4M3 and MXFP8.](/blog/mxfp8/mxfp8_03_dynamic_range.svg "E4M3 alone spans plus or minus 448. Multiplying by a per-block E8M0 scale restores FP32-like reach across the tensor: the range comes from the scale, the precision from the data.")
 
 ### The quantization algorithm
 
 For a block *b* of 32 elements:
 
 1. Find **m = max(|b₀|, ..., |b₃₁|)**
-2. Compute scale: **scale = 2^⌈log₂(m / 448)⌉**, clamped to [−127, 127]
-3. Quantize each element: **bᵢ(MXFP8) = quantize_E4M3(bᵢ / scale)**
+2. Compute the scale exponent: **k = ⌈log₂(m / 448)⌉**, clamped to [−127, 127], and set **X = 2ᵏ**
+3. Quantize each element: **bᵢ(MXFP8) = quantize_E4M3(bᵢ / X)**
 
-Step 2 ensures that after scaling, no element exceeds 448 (E4M3's max), and the scale is always a power-of-two (exact bit-shift on dequantize). Step 3 is a standard E4M3 quantization — round to nearest representable FP8.
+Step 2 picks the smallest power of two that brings the block maximum to ≤ 448, so no element overflows, and the scale is always a power of two. Step 3 is standard E4M3 quantization — round to the nearest representable FP8 value. (An all-zero block just gets the minimum scale.)
 
-The magic: elements within the same block that are at vastly different magnitudes (say, one at 0.1 and another at 200) share the *same* scale. The small element's precision is unchanged; the large element benefits from the scale stretching the representable range upward. This works because within a 32-element neighborhood in a transformer activation matrix, magnitudes are *locally correlated* — adjacent tokens or channels tend to have similar scale.
+This round-up rule is one of two common choices. The OCP spec's reference algorithm instead uses **k = ⌊log₂ m⌋ − 8** (8 being E4M3's largest exponent) and saturates anything that lands above 448 — it can clip the block maximum slightly but keeps up to one extra binade of resolution at the bottom of the block. Libraries expose both; PyTorch's torchao, for example, lets you pick the scale-rounding mode.
+
+The magic: elements in *different* blocks can sit at wildly different magnitudes without interfering, because each block chooses its own scale. Within a block, the elements share the scale set by the block's largest value, so the block's small elements are what pay — but the damage is confined to 31 neighbours instead of the whole tensor.
 
 ### A worked numerical example
 
-Here's the quantization process on an actual block (simplified to 8 elements for readability, but the same logic scales to 32):
+Here's the quantization process on an actual block (simplified to 8 elements for readability, but the same logic applies to 32):
 
-**Original block (FP32):** `[0.1, 0.25, 0.5, 1.2, 3.8, 12.0, 45.0, 150.0]`
+**Original block (FP32):** `[0.02, 0.1, 0.25, 1.2, 3.8, 45.0, 150.0, 1800.0]`
 
-**Step 1 — Find the absolute maximum:** `m = max(|0.1|, ..., |150.0|) = 150.0`
+**Step 1 — Find the absolute maximum:** `m = 1800.0`
 
-**Step 2 — Compute the shared scale.** The scale must bring 150.0 down to ≤ 448 (E4M3's max). Since 150 < 448 already, the scale is 2⁰ = 1.0. If the maximum were, say, 3600, the scale would be 2^⌈log₂(3600/448)⌉ = 2³ = 8.0.
+**Step 2 — Compute the shared scale.** 1800 / 448 = 4.02, and ⌈log₂ 4.02⌉ = 3, so the scale is 2³ = 8 (stored as E8M0 byte 130 = 0x82). After scaling, the maximum becomes 225 ≤ 448.
 
-**Step 3 — Quantize each element.** Divide by the scale, then round to the nearest E4M3 representable value:
+**Step 3 — Quantize each element.** Divide by the scale, round to the nearest E4M3 value, multiply back:
 
-| Original | ÷ scale (1.0) | E4M3 quantized | Dequantized | Error |
-|----------|--------------|----------------|-------------|-------|
-| 0.10 | 0.10 | 0.1016 | 0.1016 | +1.6% |
-| 0.25 | 0.25 | 0.2500 | 0.2500 | 0.0% |
-| 0.50 | 0.50 | 0.5000 | 0.5000 | 0.0% |
-| 1.20 | 1.20 | 1.1875 | 1.1875 | −1.0% |
-| 3.80 | 3.80 | 3.7500 | 3.7500 | −1.3% |
-| 12.00 | 12.00 | 12.000 | 12.000 | 0.0% |
-| 45.00 | 45.00 | 44.000 | 44.000 | −2.2% |
-| 150.00 | 150.00 | 144.000 | 144.000 | −4.0% |
+| Original | ÷ scale (8) | E4M3 quantized | Dequantized | Error |
+|----------|------------|----------------|-------------|-------|
+| 0.02 | 0.0025 | 0.001953 (subnormal) | 0.015625 | −21.9% |
+| 0.10 | 0.0125 | 0.01172 (subnormal) | 0.09375 | −6.3% |
+| 0.25 | 0.03125 | 0.03125 | 0.2500 | 0.0% |
+| 1.20 | 0.15 | 0.15625 | 1.2500 | +4.2% |
+| 3.80 | 0.475 | 0.46875 | 3.7500 | −1.3% |
+| 45.00 | 5.625 | 5.5 | 44.00 | −2.2% |
+| 150.00 | 18.75 | 18 | 144.0 | −4.0% |
+| 1800.00 | 225 | 224 | 1792 | −0.4% |
 
-**Key observation:** The small values (0.1, 0.25) preserve their E4M3 precision perfectly — the scale isn't dominated by the large outlier at 150. The worst error is 4% at the largest element, well within E4M3's typical quantization bound. This is the localization property: 150's magnitude doesn't crush 0.1's precision because they share a scale that properly covers both.
+**Key observation:** every element with a normal E4M3 encoding stays within E4M3's 6.25% rounding bound. The two smallest values fall into the subnormal range — this block spans five orders of magnitude, right at the edge of what one E4M3 window can hold — and lose precision. That's the within-block cost of sharing a scale.
 
-> 💡 If this were per-tensor scaling, the maximum across the *entire tensor* might be 5000, forcing scale = 2⁴ = 16. Every element would be divided by 16, making 0.1 → 0.00625 — below E4M3's minimum normal (0.00195) and losing several bits of precision. Block scaling prevents this.
+Now compare per-tensor scaling. Suppose this block lives in a tensor whose global maximum is 60000: the per-tensor scale becomes 2⁸ = 256. Under that scale, 0.02, 0.1 and 0.25 all round to **zero** (−100% error), and 1.2 comes back as 1.0 (−16.7%). Block scaling kept all of them; per-tensor scaling threw them away because of an outlier somewhere else in the tensor.
 
 ---
 
 ## Part 3 — Hardware: Matrix Cores and MXFP8
 
-### CDNA4 (MI355X): MFMA over MXFP8
+### CDNA4 (MI355X): scaled MFMA
 
-AMD's CDNA4 matrix cores consume MXFP8 through MFMA (Matrix Fused Multiply-Add) instructions. The data path:
+AMD's CDNA4 matrix cores consume MXFP8 through the *scaled* MFMA (Matrix Fused Multiply-Add) instructions. The FP8 operands and their E8M0 block scales go into the same instruction; the matrix core forms the FP8 products, applies the combined A-scale × B-scale for each 32-wide K block, and accumulates in FP32.
 
-```
-MXFP8 A [M×K]    MXFP8 B [K×N]     Block scales
-     |                 |                 |
-     v                 v                 v
-  Dequantize       Dequantize        Combine scales
-  (per-block)      (per-block)         (⊗, per-block-pair)
-     |                 |                 |
-     v                 v                 v
-  FP32 elements ──●── FP32 elements ──●── Scale product
-                  |                     |
-                  v                     v
-              Matrix core multiply-accumulate
-                  |
-                  v
-            BF16/FP32 C [M×N]
-```
+![MXFP8 matrices moving from HBM through the scaled MFMA matrix core, with block scales applied inside the instruction.](/blog/mxfp8/mxfp8_04_gemm_dataflow.svg "Where the scales actually get applied: inside the scaled MFMA itself, so no widened copy of the operands ever exists in HBM or registers.")
 
-![MXFP8 matrices moving from HBM through on-the-fly dequantization into the MFMA matrix core.](/blog/mxfp8/mxfp8_04_gemm_dataflow.svg "Where dequantization actually happens. Scales are applied inside the matrix-core datapath, so the widened values never occupy HBM or registers.")
+There is no separate dequantization pass and no widened FP32 copy of the operands in HBM or registers — the packed FP8 data and the scale bytes are all the kernel ever moves. Because each scale covers 32 consecutive K elements and the instructions' K dimension is a multiple of 32, every instruction consumes a whole number of scale blocks.
 
-The dequantization happens on-the-fly inside the matrix core — there's no intermediate MXFP8→FP32 expansion step in HBM. The matrix core loads the packed MXFP8 blocks, unpacks the E4M3 elements and their shared scales, combines the A-scale × B-scale per output element, and feeds the multiplier array. This is the same silicon that handles FP16 and BF16 MFMA; the MXFP8 path simply packs *twice as many elements* per load.
+The CDNA4 (gfx950) scaled MFMA instructions:
 
-Key CDNA4 MXFP8 MFMA shapes (gfx950, MI355X):
+| Instruction | Output tile | K per instruction | Scale blocks along K | Accumulate |
+|-------------|-------------|-------------------|----------------------|------------|
+| `v_mfma_scale_f32_16x16x128_f8f6f4` | 16×16 | 128 | 4 | FP32 |
+| `v_mfma_scale_f32_32x32x64_f8f6f4` | 32×32 | 64 | 2 | FP32 |
 
-| Instruction | A format | B format | C/D format | K dim | Compute |
-|-------------|----------|----------|------------|-------|---------|
-| `V_MFMA_F32_32x32x16_MXFP8` | MXFP8, M=32, K=16 | MXFP8, K=16, N=32 | FP32 | 16 | 32×32 tile |
-| `V_MFMA_F32_16x16x32_MXFP8` | MXFP8, M=16, K=32 | MXFP8, K=32, N=16 | FP32 | 32 | 16×16 tile |
-| `V_MFMA_F32_32x32x32_MXFP8` | MXFP8, M=32, K=32 | MXFP8, K=32, N=32 | FP32 | 32 | 32×32 tile |
+The `f8f6f4` suffix is literal: the same instructions take FP8 (E4M3 or E5M2), FP6 or FP4 operands, with the element format selected per operand — so MXFP8, MXFP6 and MXFP4 all run through one datapath.
 
-### Hopper (H100/H200): wgmma over FP8
+### Blackwell (B200/GB200): block-scaled tcgen05.mma
 
-NVIDIA's Hopper architecture supports MXFP8 through the `wgmma.mma_async` instruction with the `.f32.f16.f16` or `.f32.bf16.bf16` path. The format is identical at the specification level (OCP MX Formats spec v1.0) — 32-element blocks, E4M3 data, E8M0 scale.
+On NVIDIA's side, native MX support arrived with **Blackwell**, not Hopper. Blackwell's fifth-generation tensor cores expose block-scaled MMA through `tcgen05.mma` with `kind::mxf8f6f4` and a scale-vector operand — the same OCP MX layout of 32-element blocks with E8M0 scales. Hopper's `wgmma` supports plain FP8 (E4M3/E5M2) only; any per-block scaling on Hopper (for example DeepSeek-V3's 1×128 / 128×128 blockwise FP8) has to be applied in software, outside the tensor-core instruction.
 
 ### Throughput comparison
 
-On MI355X at 2.4 GHz, peak MXFP8 throughput per CU:
+MI355X peak dense matrix throughput (256 CUs at 2.4 GHz, per AMD's CDNA4 whitepaper):
 
-| Datatype | Ops/clk/CU (MFMA) | TFLOPS/CU | TFLOPS (256 CUs) |
-|----------|-------------------|-----------|-------------------|
-| FP32 | 256 | 0.61 | 156 |
-| BF16/FP16 | 1024 | 2.46 | 630 |
-| MXFP8 | 2048 | 4.92 | **1260** |
-| MXFP6 | 4096 | 9.83 | 2516 |
-| MXFP4 | 8192 | 19.7 | 5043 |
+| Datatype | FLOPs/clk/CU | Peak dense (MI355X) |
+|----------|--------------|---------------------|
+| FP32 | 256 | ~157 TFLOPS |
+| BF16/FP16 | 4096 | ~2.5 PFLOPS |
+| FP8 / MXFP8 | 8192 | **~5 PFLOPS** |
+| MXFP6 | 16384 | ~10 PFLOPS |
+| MXFP4 | 16384 | ~10 PFLOPS |
 
-MXFP8 doubles BF16 compute throughput — exactly what you'd expect from packing twice as many elements per byte. In practice, bandwidth-limited kernels (GEMMs with small M or large N) see less than 2× because the memory traffic reduction is the primary gain, not the math throughput.
+MXFP8 doubles BF16 compute throughput. Note that on CDNA4 MXFP6 runs at the *same* rate as MXFP4, not half of it. Real kernels land below these peaks: quantization kernels, scale handling, epilogues and — for small-M or otherwise low-arithmetic-intensity GEMMs — memory bandwidth all eat into the ideal 2×.
 
 ### Where MXFP8 fits in the quantization landscape
 
@@ -198,39 +184,43 @@ It helps to place MXFP8 alongside the other reduced-precision formats:
 | Format | Scale granularity | Scale type | Block size | Bytes/elem |
 |--------|------------------|------------|------------|------------|
 | FP8 E4M3 (per-tensor) | Tensor | FP32 | Entire tensor | 1.0 |
-| Block FP8 | Block | FP32 | 128 | 1.03 |
+| Block FP8 (1×128) | Block | FP32 | 128 | 1.03 |
 | **MXFP8 (OCP)** | Block | E8M0 | 32 | 1.03 |
-| MXFP6 (OCP) | Block | E8M0 | 32 | 0.81 |
-| MXFP4 (OCP) | Block | E8M0 | 32 | 0.56 |
+| MXFP6 (OCP) | Block | E8M0 | 32 | 0.78 |
+| MXFP4 (OCP) | Block | E8M0 | 32 | 0.53 |
 | BF16 | None | — | 1 | 2.0 |
 
-**The key differentiator:** MXFP8 uses E8M0 (power-of-two) scales on 32-element blocks. Block FP8 uses FP32 scales on 128-element blocks — 4× coarser granularity and 4× more scale storage. Per-tensor FP8 is the crudest: one scale for the entire tensor, vulnerable to the single-outlier problem.
+**The key differentiator:** MXFP8 uses E8M0 (power-of-two) scales on 32-element blocks. Block FP8 uses FP32 scales on 128-element blocks — 4× coarser granularity for the *same* storage overhead (4 bytes per 128 elements = 1 byte per 32), though its full-precision scales avoid power-of-two rounding. Per-tensor FP8 is the crudest: one scale for the entire tensor, vulnerable to the single-outlier problem.
 
 ![A single outlier degrading precision across an entire tensor under per-tensor scaling, across one row under per-token scaling, and across 32 elements under MXFP8.](/blog/mxfp8/mxfp8_05_scale_locality.svg "The real argument for small blocks: scale granularity decides how far one outlier's damage spreads. MXFP8 caps the radius at 32 elements.")
 
 ---
 
-## Part 4 — The Math: Why Block Size 32?
+## Part 4 — Why Block Size 32?
 
-The block size is a choice, and 32 isn't arbitrary. Let's work through the tradeoff.
+The block size is a choice, and 32 isn't arbitrary — but it isn't a closed-form optimum either. It's the balance point between two costs that move in opposite directions.
 
-### Quantization error model
+### Smaller blocks: better outlier containment, more overhead
 
-For a block of **B** elements, the quantization noise per element has two components:
-1. **Scale granularity error (εₛ):** How well the shared scale captures the block's true maximum. Decreases with smaller B.
-2. **Element quantization error (ε_q):** E4M3 rounding noise. Independent of B.
+A block's scale is set by its largest element, so every other element in the block is quantized relative to that maximum. When an outlier lands in a block, the block's small values get pushed down toward E4M3's subnormal range — exactly what happened to 0.02 and 0.1 in the worked example. The smaller the block, the fewer innocent neighbours share an outlier's scale, and the more likely a block's values fit comfortably inside one ~5.4-decade E4M3 window.
 
-Total: **ε_total = √(εₛ² + ε_q²)**
+The price is storage and bandwidth: overhead is 8 bits / (8·B bits) = 1/B.
 
-For E4M3, ε_q ≈ 2⁻⁴ = 6.25% relative error (standard rounding, uniform distribution assumption).
+| Block size | Scale overhead | Elements sharing one outlier's scale |
+|------------|----------------|--------------------------------------|
+| 8 | 12.5% | 8 |
+| 16 | 6.25% | 16 |
+| **32** | **3.125%** | **32** |
+| 64 | 1.56% | 64 |
+| 128 | 0.78% | 128 |
 
-For a block of B elements drawn from a normal distribution N(0, σ²), the block maximum scales as σ·√(2·ln B). The scale set to cover this maximum wastes range for the average element:
+### Larger blocks: cheaper, but outliers spread
 
-> **εₛ(B) ≈ √(2·ln B) / √(2·ln 32) − 1**
+Going the other way buys little: from 32 to 128, overhead only falls by 2.3 percentage points, while an outlier's reach grows fourfold. The power-of-two scale compounds this — it can waste up to one binade of range relative to an exact scale, a cost that hurts more when one scale must cover more values.
 
-At B=32, εₛ ≈ 0 (baseline). At B=128, εₛ ≈ 15%. At B=8, εₛ ≈ −8% (slightly better than baseline, but storage overhead doubles to 12.5%).
+### What settled it
 
-The sweet spot: B=32 makes the storage overhead just 3% while keeping scale granularity error near its minimum.
+The OCP MX block size came out of empirical work — Rouhani et al., *Microscaling Data Formats for Deep Learning* (2023) — which swept block sizes and element formats across training and inference workloads and found 32 kept accuracy close to FP32 baselines with small overhead. It is also hardware-friendly: 32 FP8 elements are 32 bytes, and the matrix-instruction K dimensions (64, 128) are whole multiples of it.
 
 ---
 
@@ -243,16 +233,14 @@ The MX specification scales down further:
 | BF16 | 16 | — | 1 | 2.0 | 1× |
 | FP8 E4M3 | 8 | — | 1 | 1.0 | 2× |
 | **MXFP8** | 8 | 8 | 32 | 1.03 | 1.94× |
-| MXFP6 | 6 | 8 | 32 | 0.81 | 2.46× |
-| MXFP4 | 4 | 8 | 32 | 0.56 | 3.56× |
+| MXFP6 | 6 | 8 | 32 | 0.78 | 2.56× |
+| MXFP4 | 4 | 8 | 32 | 0.53 | 3.76× |
 
-MXFP6 and MXFP4 trade more precision for more compression. MXFP6 with 2 mantissa bits (E3M2) has 6.25% resolution — similar to E5M2 but with per-block scaling for range. MXFP4 with 1 mantissa bit (E2M1) is primarily for inference where the forward pass tolerates 12.5% precision.
+MXFP6 and MXFP4 trade more precision for more compression. MXFP6 comes in two variants: E2M3 (3 mantissa bits, the same 12.5% relative step as E4M3 but much less range) and E3M2 (2 mantissa bits, a 25% step like E5M2, with per-block scaling supplying the range). MXFP4 uses E2M1 — a single mantissa bit, so adjacent values are 50% apart and rounding error reaches 25% — which is why it is used primarily for inference.
 
-On CDNA4, MXFP6 and MXFP4 MFMA instructions exist in the ISA but the real-world training convergence story for these formats is still being written. The quantization error at 4 bits per element starts interacting with optimizer dynamics in non-trivial ways — a topic for another post.
+On CDNA4, MXFP6 and MXFP4 run through the same scaled MFMA instructions as MXFP8, at twice the MXFP8 rate, but the real-world training convergence story for these formats is still being written. The quantization error at 4 bits per element starts interacting with optimizer dynamics in non-trivial ways — a topic for another post.
 
 ---
-
-
 
 ## The Mental Model
 
@@ -262,7 +250,7 @@ Here's the intuition to carry with you:
 > Block Floating Point gives every block one exponent.
 > **MXFP8 sits in the middle: every value has a local FP8 exponent, while every block gets an additional shared E8M0 scale.**
 
-The per-element E4M3 exponent handles fine-grained magnitude variation within the block. The shared E8M0 scale shifts the entire block's representable range up or down by powers of two. Together they cover the full FP32 range, at 8-bit storage density, with outlier damage confined to 31-element neighborhoods.
+The per-element E4M3 exponent handles fine-grained magnitude variation within the block. The shared E8M0 scale shifts the entire block's representable window up or down by powers of two. Together they cover FP32-like range across the tensor, at 8-bit storage density, with outlier damage confined to a single 32-element block.
 
 That's the block-scaling bet, and it pays off.
 
@@ -271,10 +259,11 @@ That's the block-scaling bet, and it pays off.
 ## References
 
 - [OCP Microscaling Formats (MX) Specification v1.0](https://www.opencompute.org/documents/ocp-microscaling-formats-mx-v1-0-spec-final-pdf)
-- [AMD CDNA4 ISA Reference Guide](https://www.amd.com/en/technologies/cdna4)
+- [Rouhani et al., "Microscaling Data Formats for Deep Learning" (2023)](https://arxiv.org/abs/2310.10537)
+- [AMD, "Introducing AMD CDNA 4 Architecture" (whitepaper)](https://www.amd.com/content/dam/amd/en/documents/instinct-tech-docs/white-papers/amd-cdna-4-architecture-whitepaper.pdf)
 - [ROCm Composable Kernel MXFP8 GEMM](https://github.com/ROCm/composable_kernel)
 - [AITER: Block-Scaled GEMM in ROCm](https://github.com/ROCm/aiter)
-- [PyTorch MXFP8 Prototype](https://github.com/pytorch/ao)
+- [PyTorch torchao (MX formats)](https://github.com/pytorch/ao)
 
 ---
 

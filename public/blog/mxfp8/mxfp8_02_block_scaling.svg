@@ -33,8 +33,8 @@
 
   <!-- Scale box -->
   <rect x="60" y="360" width="120" height="52" fill="#ffc9c9" stroke="#ff8787" stroke-width="2" rx="6"/>
-  <text x="120" y="380" text-anchor="middle" font-size="13" fill="#c92a2a">Scale = 2⁴</text>
-  <text x="120" y="398" text-anchor="middle" font-size="12" fill="#c92a2a">(E8M0: 0x84)</text>
+  <text x="120" y="380" text-anchor="middle" font-size="13" fill="#c92a2a">Scale X = 2⁴</text>
+  <text x="120" y="398" text-anchor="middle" font-size="12" fill="#c92a2a">(E8M0: 0x83)</text>
 
   <text x="192" y="392" text-anchor="middle" font-size="20" fill="#1e1e1e">+</text>
 
@@ -60,25 +60,25 @@
 
   <!-- Arrow -->
   <line x1="320" y1="420" x2="320" y2="470" stroke="#868e96" stroke-width="2" marker-end="url(#arrowGray)"/>
-  <text x="340" y="450" font-size="13" fill="#868e96">Dequantize: x̂ᵢ = xᵢ(E4M3) × 2^scale</text>
+  <text x="340" y="450" font-size="13" fill="#868e96">Dequantize: x̂ᵢ = xᵢ(E4M3) × X</text>
 
   <!-- Step 4 -->
   <text x="60" y="500" font-size="15" font-weight="600" fill="#1e1e1e">④ Recovered Values (BF16/FP32)</text>
   <rect x="60" y="515" width="520" height="42" fill="#b2f2bb" stroke="#69db7c" stroke-width="2" rx="4"/>
-  <text x="320" y="541" text-anchor="middle" font-size="14" fill="#2b8a3e">Full FP32 dynamic range, 6% E4M3 precision per element</text>
+  <text x="320" y="541" text-anchor="middle" font-size="14" fill="#2b8a3e">FP32-like range across blocks, E4M3 precision within each</text>
 
   <!-- Storage overhead box -->
   <rect x="60" y="590" width="960" height="70" fill="#fff3bf" stroke="#fcc419" stroke-width="1.5" rx="6"/>
   <text x="80" y="615" font-size="14" font-weight="600" fill="#1e1e1e">💡 Storage Overhead</text>
-  <text x="80" y="635" font-size="13" fill="#495057">Raw FP8:  32 bytes for 32 elements │  MXFP8: 33 bytes (32 data + 1 scale) │  Overhead: 1 byte / 33 = 3.0%</text>
-  <text x="80" y="653" font-size="13" fill="#495057">BF16 needs 64 bytes for 32 elements — MXFP8 uses 1.94× less memory with the same dynamic range.</text>
+  <text x="80" y="635" font-size="13" fill="#495057">Raw FP8:  32 bytes for 32 elements │  MXFP8: 33 bytes (32 data + 1 scale) │  Overhead: 1 byte per 32 = 3.125%</text>
+  <text x="80" y="653" font-size="13" fill="#495057">BF16 needs 64 bytes for 32 elements — MXFP8 uses 1.94× less memory with comparable reach across the tensor.</text>
 
   <!-- Outlier localization -->
   <rect x="60" y="690" width="960" height="85" fill="#f8f9fa" stroke="#dee2e6" stroke-width="1.5" rx="6"/>
   <text x="80" y="715" font-size="14" font-weight="600" fill="#1e1e1e">Outlier Localization</text>
-  <text x="80" y="738" font-size="12" fill="#495057">Per-tensor scaling: 1 scale for all elements → one outlier at 5000 sets the scale → ALL elements lose precision</text>
+  <text x="80" y="738" font-size="12" fill="#495057">Per-tensor scaling: 1 scale for all elements → one outlier at 5000 sets the scale → small values everywhere underflow</text>
   <text x="80" y="755" font-size="12" fill="#495057">Per-token scaling:  1 scale per row → one outlier ruins that entire row</text>
-  <text x="80" y="772" font-size="12" fill="#2b8a3e" font-weight="600">MXFP8 block scaling: 1 scale per 32 elements → outlier damage localized to just 31 neighbors</text>
+  <text x="80" y="772" font-size="12" fill="#2b8a3e" font-weight="600">MXFP8 block scaling: 1 scale per 32 elements → outlier damage localized to the 31 other elements of its block</text>
 
   <defs>
     <marker id="arrowGray" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="6" markerHeight="6" orient="auto">

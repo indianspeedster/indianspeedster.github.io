@@ -1,45 +1,46 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1100 600" width="1100" height="600" font-family="system-ui, -apple-system, sans-serif">
   <text x="550" y="30" text-anchor="middle" font-size="21" font-weight="600" fill="#1e1e1e">Dynamic Range Comparison: FP32 → MXFP8 (log₁₀ scale)</text>
 
-  <!-- Axis -->
+  <!-- Axis: log10|x| from -45 to +45 -->
   <line x1="80" y1="85" x2="950" y2="85" stroke="#1e1e1e" stroke-width="2" marker-end="url(#arrow)"/>
   <text x="960" y="80" font-size="12" fill="#868e96">log₁₀│x│</text>
+  <line x1="127.8" y1="80" x2="127.8" y2="275" stroke="#dee2e6" stroke-width="1"/>
+  <text x="127.8" y="72" font-size="11" fill="#868e96" text-anchor="middle">−40</text>
+  <line x1="318.9" y1="80" x2="318.9" y2="275" stroke="#dee2e6" stroke-width="1"/>
+  <text x="318.9" y="72" font-size="11" fill="#868e96" text-anchor="middle">−20</text>
+  <line x1="510.0" y1="80" x2="510.0" y2="275" stroke="#dee2e6" stroke-width="1"/>
+  <text x="510.0" y="72" font-size="11" fill="#868e96" text-anchor="middle">0</text>
+  <line x1="701.1" y1="80" x2="701.1" y2="275" stroke="#dee2e6" stroke-width="1"/>
+  <text x="701.1" y="72" font-size="11" fill="#868e96" text-anchor="middle">20</text>
+  <line x1="892.2" y1="80" x2="892.2" y2="275" stroke="#dee2e6" stroke-width="1"/>
+  <text x="892.2" y="72" font-size="11" fill="#868e96" text-anchor="middle">40</text>
 
-  <!-- Scale labels -->
-  <text x="80" y="72" font-size="11" fill="#868e96" text-anchor="middle">−40</text>
-  <text x="253" y="72" font-size="11" fill="#868e96" text-anchor="middle">−35</text>
-  <text x="427" y="72" font-size="11" fill="#868e96" text-anchor="middle">−30</text>
-  <text x="600" y="72" font-size="11" fill="#868e96" text-anchor="middle">−25</text>
-  <text x="773" y="72" font-size="11" fill="#868e96" text-anchor="middle">−20</text>
-  <text x="860" y="72" font-size="11" fill="#868e96" text-anchor="middle">−15</text>
-  <text x="940" y="72" font-size="11" fill="#868e96" text-anchor="middle">0</text>
-
-  <!-- FP32 -->
+  <!-- FP32: 10^-44.85 to 10^38.53 -->
   <text x="25" y="108" font-size="14" fill="#1e1e1e">FP32</text>
-  <rect x="80" y="98" width="860" height="20" fill="#adb5bd" stroke="#868e96" stroke-width="1" rx="3"/>
-  <text x="950" y="113" font-size="11" fill="#868e96">±3.4×10³⁸</text>
+  <rect x="81.4" y="98" width="796.7" height="20" fill="#adb5bd" stroke="#868e96" stroke-width="1" rx="3"/>
+  <text x="886.2" y="113" font-size="11" fill="#868e96">±3.4×10³⁸</text>
 
-  <!-- BF16 -->
+  <!-- BF16: 10^-40.04 to 10^38.53 -->
   <text x="25" y="140" font-size="14" fill="#1e1e1e">BF16</text>
-  <rect x="80" y="130" width="860" height="20" fill="#adb5bd" stroke="#868e96" stroke-width="1" rx="3"/>
-  <text x="950" y="145" font-size="11" fill="#868e96">±3.4×10³⁸</text>
+  <rect x="127.4" y="130" width="750.8" height="20" fill="#adb5bd" stroke="#868e96" stroke-width="1" rx="3"/>
+  <text x="886.2" y="145" font-size="11" fill="#868e96">±3.4×10³⁸</text>
 
-  <!-- E5M2 -->
+  <!-- E5M2: 10^-4.82 to 10^4.76 -->
   <text x="25" y="172" font-size="14" fill="#1e1e1e">E5M2</text>
-  <rect x="80" y="162" width="470" height="20" fill="#adb5bd" stroke="#868e96" stroke-width="1" rx="3"/>
-  <text x="560" y="177" font-size="11" fill="#868e96">±5.7×10⁴</text>
+  <rect x="463.9" y="162" width="91.5" height="20" fill="#adb5bd" stroke="#868e96" stroke-width="1" rx="3"/>
+  <text x="563.5" y="177" font-size="11" fill="#868e96">±5.7×10⁴  (same range as FP16)</text>
 
-  <!-- E4M3 (narrow) -->
+  <!-- E4M3: 10^-2.71 to 10^2.65 -->
   <text x="25" y="218" font-size="14" fill="#c92a2a">E4M3</text>
-  <rect x="320" y="208" width="160" height="20" fill="#ffc9c9" stroke="#ff8787" stroke-width="2" rx="3"/>
-  <text x="490" y="223" font-size="11" fill="#c92a2a">±448</text>
-  <text x="330" y="200" font-size="11" fill="#c92a2a">Narrow! Overflows beyond ±448</text>
+  <rect x="484.1" y="208" width="51.2" height="20" fill="#ffc9c9" stroke="#ff8787" stroke-width="2" rx="3"/>
+  <text x="543.3" y="223" font-size="11" fill="#c92a2a">±448</text>
 
-  <!-- MXFP8 (wide) -->
+  <!-- MXFP8: 10^-40.94 to 10^40.88 -->
   <text x="25" y="265" font-size="14" fill="#2b8a3e" font-weight="600">MXFP8</text>
-  <rect x="80" y="250" width="860" height="20" fill="#b2f2bb" stroke="#40c057" stroke-width="2" rx="3"/>
-  <text x="950" y="268" font-size="11" fill="#2b8a3e">±1.7×10³⁸</text>
-  <text x="300" y="243" font-size="11" fill="#2b8a3e">E4M3 data × E8M0 scale = FP32-like range</text>
+  <rect x="118.8" y="250" width="781.8" height="20" fill="#b2f2bb" stroke="#40c057" stroke-width="2" rx="3"/>
+  <text x="908.6" y="265" font-size="11" fill="#2b8a3e">±7.6×10⁴⁰</text>
+  <text x="560" y="200" font-size="11" fill="#c92a2a">← Narrow: ~5.4 decades, saturates beyond ±448</text>
+  <text x="130" y="243" font-size="11" fill="#2b8a3e">E4M3 data × E8M0 scale: FP32-like reach across blocks — each single block still spans only E4M3's ~5.4 decades</text>
 
   <!-- The Block-Scaling Trick -->
   <text x="80" y="325" font-size="17" font-weight="600" fill="#1e1e1e">The Block-Scaling Trick</text>
@@ -47,9 +48,9 @@
   <!-- Box 1 -->
   <rect x="80" y="345" width="260" height="90" fill="#fff3bf" stroke="#fcc419" stroke-width="2" rx="8"/>
   <text x="210" y="370" text-anchor="middle" font-size="13" font-weight="600" fill="#1e1e1e">E4M3 per-element</text>
-  <text x="210" y="390" text-anchor="middle" font-size="12" fill="#495057">6% relative precision</text>
+  <text x="210" y="390" text-anchor="middle" font-size="12" fill="#495057">12.5% step, ≤6.25% rounding error</text>
   <text x="210" y="407" text-anchor="middle" font-size="12" fill="#495057">Range limited to ±448</text>
-  <text x="210" y="424" text-anchor="middle" font-size="11" fill="#c92a2a">(no headroom beyond 0b1111_0xxx)</text>
+  <text x="210" y="424" text-anchor="middle" font-size="11" fill="#c92a2a">(no Inf; only S.1111.111 is NaN)</text>
 
   <!-- + sign between boxes -->
   <text x="360" y="400" text-anchor="middle" font-size="28" fill="#1e1e1e">+</text>
@@ -58,7 +59,7 @@
   <rect x="390" y="345" width="260" height="90" fill="#d0bfff" stroke="#9775fa" stroke-width="2" rx="8"/>
   <text x="520" y="370" text-anchor="middle" font-size="13" font-weight="600" fill="#1e1e1e">E8M0 block scale</text>
   <text x="520" y="390" text-anchor="middle" font-size="12" fill="#495057">Pure power-of-2: 2ⁿ</text>
-  <text x="520" y="407" text-anchor="middle" font-size="12" fill="#495057">Range: 2⁻¹²⁷ → 2¹²⁷</text>
+  <text x="520" y="407" text-anchor="middle" font-size="12" fill="#495057">Range: 2⁻¹²⁷ → 2¹²⁷ (0xFF = NaN)</text>
   <text x="520" y="424" text-anchor="middle" font-size="11" fill="#6741d9">1 byte per 32 elements</text>
 
   <!-- = sign -->
@@ -67,17 +68,17 @@
   <!-- Box 3 -->
   <rect x="700" y="345" width="260" height="90" fill="#b2f2bb" stroke="#40c057" stroke-width="2" rx="8"/>
   <text x="830" y="370" text-anchor="middle" font-size="13" font-weight="600" fill="#2b8a3e">MXFP8 Result</text>
-  <text x="830" y="390" text-anchor="middle" font-size="12" fill="#2b8a3e">FP32-like dynamic range</text>
-  <text x="830" y="407" text-anchor="middle" font-size="12" fill="#2b8a3e">+ 6% E4M3 precision</text>
+  <text x="830" y="390" text-anchor="middle" font-size="12" fill="#2b8a3e">FP32-like reach across blocks</text>
+  <text x="830" y="407" text-anchor="middle" font-size="12" fill="#2b8a3e">+ E4M3 precision per element</text>
   <text x="830" y="424" text-anchor="middle" font-size="12" fill="#2b8a3e">1.03 bytes/element</text>
 
   <!-- Block size rationales -->
   <rect x="80" y="470" width="940" height="105" fill="#f8f9fa" stroke="#dee2e6" stroke-width="1.5" rx="6"/>
   <text x="100" y="495" font-size="14" font-weight="600" fill="#1e1e1e">Why Block Size = 32?</text>
-  <text x="100" y="518" font-size="12" fill="#495057">Block size 8:   scale overhead = 12.5% — too expensive. Each scale byte covers only 8 values.</text>
-  <text x="100" y="536" font-size="12" fill="#2b8a3e" font-weight="600">Block size 32:  scale overhead = 3.1% — sweet spot. Fine enough to contain outliers, cheap enough to be negligible.</text>
-  <text x="100" y="554" font-size="12" fill="#495057">Block size 128: scale overhead = 0.8% — but one scale for 128 elements smears range; outlier containment breaks down.</text>
-  <text x="100" y="572" font-size="12" fill="#868e96">32 is the minimum viable block size where scale overhead drops below 5% while maintaining statistical locality.</text>
+  <text x="100" y="518" font-size="12" fill="#495057">Block size 8:   scale overhead = 12.5% — one scale byte for every 8 bytes of data.</text>
+  <text x="100" y="536" font-size="12" fill="#2b8a3e" font-weight="600">Block size 32:  scale overhead = 3.1% — the OCP MX choice, chosen empirically (Rouhani et al., 2023).</text>
+  <text x="100" y="554" font-size="12" fill="#495057">Block size 128: scale overhead = 0.8% — but one outlier now sets the scale for 128 elements.</text>
+  <text x="100" y="572" font-size="12" fill="#868e96">Smaller blocks contain outliers better; larger ones amortize the scale. 32 is a hardware-friendly compromise, not a derived optimum.</text>
 
   <defs>
     <marker id="arrow" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="6" markerHeight="6" orient="auto">

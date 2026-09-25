@@ -10,7 +10,7 @@
   <text x="305" y="93" text-anchor="middle" font-size="14" fill="#1e1e1e">8-bit exponent</text>
   <rect x="486" y="70" width="294" height="36" fill="#b2f2bb" stroke="#ced4da" stroke-width="1"/>
   <text x="633" y="93" text-anchor="middle" font-size="14" fill="#1e1e1e">23-bit mantissa</text>
-  <text x="790" y="93" font-size="12" fill="#868e96">Range: ±3.4×10³⁸, 10⁻⁷ precision</text>
+  <text x="790" y="93" font-size="12" fill="#868e96">Range: ±3.4×10³⁸, 1.2×10⁻⁷ relative step</text>
 
   <!-- BF16 -->
   <text x="30" y="145" font-size="15" fill="#1e1e1e">BF16</text>
@@ -21,7 +21,7 @@
   <text x="305" y="148" text-anchor="middle" font-size="14" fill="#1e1e1e">8-bit exponent</text>
   <rect x="486" y="125" width="294" height="36" fill="#b2f2bb" stroke="#ced4da" stroke-width="1"/>
   <text x="633" y="148" text-anchor="middle" font-size="14" fill="#1e1e1e">7-bit mantissa</text>
-  <text x="790" y="148" font-size="12" fill="#868e96">Range: ±3.4×10³⁸, 0.4% precision</text>
+  <text x="790" y="148" font-size="12" fill="#868e96">Range: ±3.4×10³⁸, 0.78% relative step</text>
 
   <!-- FP8 E5M2 -->
   <text x="30" y="200" font-size="15" fill="#1e1e1e">E5M2</text>
@@ -32,7 +32,7 @@
   <text x="233" y="203" text-anchor="middle" font-size="14" fill="#1e1e1e">5-bit exponent</text>
   <rect x="343" y="180" width="87" height="36" fill="#b2f2bb" stroke="#ced4da" stroke-width="1"/>
   <text x="387" y="203" text-anchor="middle" font-size="14" fill="#1e1e1e">M2</text>
-  <text x="440" y="203" font-size="12" fill="#868e96">Range: ±57344, 25% precision — wide, coarse</text>
+  <text x="440" y="203" font-size="12" fill="#868e96">Range: ±57344, 25% relative step — wide, coarse</text>
 
   <!-- FP8 E4M3 -->
   <text x="30" y="255" font-size="15" fill="#1e1e1e">E4M3</text>
@@ -43,12 +43,12 @@
   <text x="211" y="258" text-anchor="middle" font-size="14" fill="#1e1e1e">4-bit exponent</text>
   <rect x="299" y="235" width="131" height="36" fill="#b2f2bb" stroke="#ced4da" stroke-width="1"/>
   <text x="364" y="258" text-anchor="middle" font-size="14" fill="#1e1e1e">M3</text>
-  <text x="440" y="258" font-size="12" fill="#c92a2a">Range: ±448, 6% precision — narrow, precise</text>
+  <text x="440" y="258" font-size="12" fill="#c92a2a">Range: ±448, 12.5% relative step — narrow, finer</text>
 
   <!-- E4M3 annotation line -->
   <line x1="380" y1="265" x2="500" y2="300" stroke="#c92a2a" stroke-width="1" stroke-dasharray="4,3"/>
   <text x="505" y="295" font-size="11" fill="#c92a2a">E4M3: max ±448</text>
-  <text x="505" y="310" font-size="11" fill="#c92a2a">overflows beyond this</text>
+  <text x="505" y="310" font-size="11" fill="#c92a2a">saturates or NaN beyond this</text>
 
   <!-- Legend -->
   <text x="80" y="430" font-size="12" fill="#868e96">Legend:</text>
@@ -66,7 +66,7 @@
   <text x="100" y="485" font-size="14" font-weight="600" fill="#1e1e1e">Storage Overhead at Different Block Sizes</text>
   <text x="100" y="510" font-size="12" fill="#495057">Block size = 8:    8-bit scale ÷ 64-bit data  = 12.5% overhead — too expensive</text>
   <text x="100" y="528" font-size="12" fill="#2b8a3e" font-weight="600">Block size = 32:   8-bit scale ÷ 256-bit data = 3.1% overhead — sweet spot ✓</text>
-  <text x="100" y="546" font-size="12" fill="#495057">Block size = 64:   8-bit scale ÷ 512-bit data = 1.6% overhead — but 64 elements per scale smears range</text>
-  <text x="100" y="564" font-size="12" fill="#495057">Block size = 128:  8-bit scale ÷ 1024-bit data = 0.8% overhead — too coarse, precision loss dominates</text>
-  <text x="100" y="582" font-size="12" fill="#868e96">32 is the Pareto-optimal point: negligible overhead with fine-grained outlier containment.</text>
+  <text x="100" y="546" font-size="12" fill="#495057">Block size = 64:   8-bit scale ÷ 512-bit data = 1.6% overhead — one outlier now sets the scale for 64 elements</text>
+  <text x="100" y="564" font-size="12" fill="#495057">Block size = 128:  8-bit scale ÷ 1024-bit data = 0.8% overhead — one outlier sets the scale for 128 elements</text>
+  <text x="100" y="582" font-size="12" fill="#868e96">32 is the OCP MX choice: small overhead, with one outlier's damage capped at a 32-element block.</text>
 </svg>

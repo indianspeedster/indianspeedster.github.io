@@ -1,9 +1,9 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1100 700" width="1100" height="700" font-family="system-ui, -apple-system, sans-serif">
-  <text x="550" y="28" text-anchor="middle" font-size="19" font-weight="600" fill="#1e1e1e">MXFP8 GEMM Dataflow: HBM → On-the-fly Dequant → Matrix Core Multiply-Accumulate</text>
+  <text x="550" y="28" text-anchor="middle" font-size="19" font-weight="600" fill="#1e1e1e">MXFP8 GEMM Dataflow: HBM → Scaled MFMA → FP32 Accumulate</text>
 
   <!-- Stage labels -->
   <text x="180" y="60" text-anchor="middle" font-size="13" fill="#868e96">① HBM Input</text>
-  <text x="550" y="60" text-anchor="middle" font-size="13" fill="#868e96">② On-the-fly Dequant</text>
+  <text x="550" y="60" text-anchor="middle" font-size="13" fill="#868e96">② Block scales</text>
   <text x="900" y="60" text-anchor="middle" font-size="13" fill="#868e96">③ MFMA Matrix Core</text>
 
   <!-- Matrix A input -->
@@ -26,16 +26,16 @@
 
   <!-- Dequantize box -->
   <rect x="365" y="120" width="260" height="200" fill="#fff3bf" stroke="#fcc419" stroke-width="2" rx="8"/>
-  <text x="495" y="155" text-anchor="middle" font-size="14" font-weight="600" fill="#1e1e1e">On-the-fly Dequant</text>
-  <text x="495" y="178" text-anchor="middle" font-size="12" fill="#495057">Happens inside the matrix core,</text>
-  <text x="495" y="196" text-anchor="middle" font-size="12" fill="#495057">no intermediate HBM write</text>
+  <text x="495" y="155" text-anchor="middle" font-size="14" font-weight="600" fill="#1e1e1e">Block-scale application</text>
+  <text x="495" y="178" text-anchor="middle" font-size="12" fill="#495057">Folded into the scaled MFMA,</text>
+  <text x="495" y="196" text-anchor="middle" font-size="12" fill="#495057">no separate dequant pass</text>
   <line x1="385" y1="212" x2="605" y2="212" stroke="#dee2e6" stroke-width="1"/>
 
-  <text x="495" y="235" text-anchor="middle" font-size="12" fill="#2b8a3e">A_fp32 = A_e4m3 × 2^A_e8m0</text>
-  <text x="495" y="255" text-anchor="middle" font-size="12" fill="#2b8a3e">B_fp32 = B_e4m3 × 2^B_e8m0</text>
+  <text x="495" y="235" text-anchor="middle" font-size="12" fill="#2b8a3e">FP8 products formed natively</text>
+  <text x="495" y="255" text-anchor="middle" font-size="12" fill="#2b8a3e">× 2^(sA + sB) per 32-wide K block</text>
   <line x1="385" y1="270" x2="605" y2="270" stroke="#dee2e6" stroke-width="1"/>
-  <text x="495" y="288" text-anchor="middle" font-size="11" fill="#868e96">Scale is power-of-2 →</text>
-  <text x="495" y="305" text-anchor="middle" font-size="11" fill="#868e96">dequant = bit-shift (≈ zero cost)</text>
+  <text x="495" y="288" text-anchor="middle" font-size="11" fill="#868e96">Power-of-2 scale →</text>
+  <text x="495" y="305" text-anchor="middle" font-size="11" fill="#868e96">exponent add, not a multiply</text>
 
   <!-- Arrow to matrix core -->
   <line x1="627" y1="200" x2="740" y2="200" stroke="#495057" stroke-width="2" marker-end="url(#arrowDark)"/>
@@ -43,11 +43,11 @@
   <!-- Matrix Core box -->
   <rect x="745" y="120" width="260" height="140" fill="#b2f2bb" stroke="#40c057" stroke-width="2" rx="8"/>
   <text x="875" y="152" text-anchor="middle" font-size="14" font-weight="600" fill="#1e1e1e">Matrix Core (MFMA)</text>
-  <text x="875" y="178" text-anchor="middle" font-size="12" fill="#2b8a3e">A_fp32 × B_fp32</text>
-  <text x="875" y="198" text-anchor="middle" font-size="12" fill="#2b8a3e">+ scale product adjustment</text>
+  <text x="875" y="178" text-anchor="middle" font-size="12" fill="#2b8a3e">A_fp8 · B_fp8 products</text>
+  <text x="875" y="198" text-anchor="middle" font-size="12" fill="#2b8a3e">× combined block scale</text>
   <text x="875" y="222" text-anchor="middle" font-size="12" fill="#495057">Accumulate in FP32</text>
   <rect x="770" y="234" width="210" height="20" fill="#e9ecef" stroke="#ced4da" stroke-width="1" rx="3"/>
-  <text x="875" y="248" text-anchor="middle" font-size="11" fill="#495057">V_MFMA_F32_32x32x16_MXFP8</text>
+  <text x="875" y="248" text-anchor="middle" font-size="10" fill="#495057">v_mfma_scale_f32_32x32x64_f8f6f4</text>
 
   <!-- Output -->
   <line x1="875" y1="262" x2="875" y2="335" stroke="#495057" stroke-width="2" marker-end="url(#arrowDark)"/>
@@ -58,22 +58,22 @@
   <!-- Bottom details panel -->
   <rect x="40" y="430" width="1020" height="255" fill="#f8f9fa" stroke="#dee2e6" stroke-width="1.5" rx="6"/>
 
-  <text x="60" y="458" font-size="14" font-weight="600" fill="#1e1e1e">CDNA4 MXFP8 MFMA Instructions (gfx950)</text>
-  <text x="60" y="480" font-size="12" fill="#495057">• V_MFMA_F32_32x32x16_MXFP8 — 32×32 tile, K=16, FP32 accumulate</text>
-  <text x="60" y="497" font-size="12" fill="#495057">• V_MFMA_F32_16x16x32_MXFP8 — 16×16 tile, K=32, FP32 accumulate</text>
-  <text x="60" y="514" font-size="12" fill="#495057">• V_MFMA_F32_32x32x32_MXFP8 — 32×32 tile, K=32, FP32 accumulate</text>
+  <text x="60" y="458" font-size="14" font-weight="600" fill="#1e1e1e">CDNA4 Scaled MFMA Instructions (gfx950)</text>
+  <text x="60" y="480" font-size="12" fill="#495057">• v_mfma_scale_f32_16x16x128_f8f6f4 — 16×16 output tile, K=128 (4 scale blocks), FP32 accumulate</text>
+  <text x="60" y="497" font-size="12" fill="#495057">• v_mfma_scale_f32_32x32x64_f8f6f4 — 32×32 output tile, K=64 (2 scale blocks), FP32 accumulate</text>
+  <text x="60" y="514" font-size="12" fill="#495057">• Same instructions take FP8 (E4M3/E5M2), FP6 or FP4 operands; E8M0 scales are passed as extra operands</text>
 
   <line x1="60" y1="530" x2="1040" y2="530" stroke="#dee2e6" stroke-width="1"/>
 
   <text x="60" y="552" font-size="14" font-weight="600" fill="#1e1e1e">Scale Granularity Comparison</text>
   <text x="60" y="574" font-size="12" fill="#495057">Per-tensor scale: 1 scale for all elements → one outlier ruins the whole tensor</text>
   <text x="60" y="592" font-size="12" fill="#495057">Per-token scale:  1 scale per row → one outlier ruins that whole row</text>
-  <text x="60" y="610" font-size="12" fill="#2b8a3e" font-weight="600">MXFP8 block scale: 1 scale per 32-element block → outlier damage localized to 31 neighbors only</text>
+  <text x="60" y="610" font-size="12" fill="#2b8a3e" font-weight="600">MXFP8 block scale: 1 scale per 32-element block → outlier damage localized to its own block</text>
 
   <line x1="60" y1="626" x2="1040" y2="626" stroke="#dee2e6" stroke-width="1"/>
 
-  <text x="60" y="648" font-size="13" fill="#495057">Key advantage: MXFP8 packs 2× elements per byte vs FP16 → halved HBM traffic + doubled matrix-core throughput</text>
-  <text x="60" y="670" font-size="13" fill="#868e96">The dequant step is a zero-latency bit-shift handled inside the matrix core — no extra instructions, no extra pipeline stages.</text>
+  <text x="60" y="648" font-size="13" fill="#495057">Key advantage: 1.03 bytes/element vs 2 for BF16 → ~1.94× less HBM traffic, and ~5 vs ~2.5 PFLOPS peak on MI355X</text>
+  <text x="60" y="670" font-size="13" fill="#868e96">Scaling is folded into the MFMA itself — no separate dequant kernel and no widened copy of the operands in memory.</text>
 
   <defs>
     <marker id="arrowDark" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="6" markerHeight="6" orient="auto">
