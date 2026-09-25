@@ -9,6 +9,8 @@ export default defineConfig({
   site: 'https://indianspeedster.github.io',
   markdown: {
     rehypePlugins: [rehypeFigure],
+    // Light code theme to match the paper-coloured page.
+    shikiConfig: { theme: 'github-light' },
   },
   vite: {
     plugins: [tailwindcss()],

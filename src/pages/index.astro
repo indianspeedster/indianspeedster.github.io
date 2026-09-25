@@ -1,132 +1,26 @@
 ---
 import Base from '../layouts/Base.astro';
-import { profile, socials, work, education, projects, publications } from '../data/site';
-import { getCollection } from 'astro:content';
+import PostList from '../components/PostList.astro';
+import { profile, socials } from '../data/site';
 
-const posts = (await getCollection('blog'))
-  .filter((p) => !p.data.draft)
-  .sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf())
-  .slice(0, 3);
-
-const fmt = (d: Date) =>
-  d.toLocaleDateString('en-US', { year: 'numeric', month: 'short' });
+const links = [
+  ...socials,
+  ...(profile.resume ? [{ label: 'Resume', href: profile.resume }] : []),
+  ...(profile.email ? [{ label: 'Email', href: `mailto:${profile.email}` }] : []),
+];
 ---
 
 <Base>
-  <!-- Hero -->
-  <header class="pt-16 pb-9 flex gap-8 items-center" id="about">
-    {profile.photo && <img class="w-[132px] h-[132px] rounded-2xl object-cover border border-gray-200 shrink-0" src={profile.photo} alt={profile.name} />}
-    <div>
-      <h1 class="text-[38px] font-semibold text-black m-0 mb-1.5 tracking-tight">{profile.name}</h1>
-      <p class="text-[15px] text-blue-600 m-0 mb-3.5">
-        <span class="text-gray-400">> </span>{profile.tagline}
-      </p>
-      <div class="flex gap-2.5 flex-wrap text-[13px]">
-        {socials.map((s) => <a href={s.href} target="_blank" rel="noopener" class="border border-gray-200 rounded-full px-3 py-1 text-gray-500 hover:border-blue-400 hover:text-blue-600 hover:bg-blue-50 transition-colors">{s.label}</a>)}
-        {profile.resume && <a href={profile.resume} target="_blank" rel="noopener" class="border border-gray-200 rounded-full px-3 py-1 text-gray-500 hover:border-blue-400 hover:text-blue-600 hover:bg-blue-50 transition-colors">Resume</a>}
-        {profile.email && <a href={`mailto:${profile.email}`} class="border border-gray-200 rounded-full px-3 py-1 text-gray-500 hover:border-blue-400 hover:text-blue-600 hover:bg-blue-50 transition-colors">Email</a>}
-      </div>
-    </div>
-  </header>
+  <h1 style="font-size: 40px; margin: 0 0 16px;">{profile.name}</h1>
+  <p style="margin: 0 0 12px;">{profile.about}</p>
+  <p class="muted" style="margin: 0;">
+    {links.map((l, i) => (
+      <>
+        {i > 0 && ' · '}
+        <a href={l.href} target="_blank" rel="noopener">{l.label}</a>
+      </>
+    ))}
+  </p>
 
-  <!-- About -->
-  <section class="py-7">
-    <h2 class="text-[13px] uppercase tracking-[0.18em] text-gray-400 mb-5 flex items-center gap-3 after:content-[''] after:flex-1 after:h-px after:bg-gray-200">about</h2>
-    <p class="text-gray-500 text-[17px]">{profile.about}</p>
-  </section>
-
-  <!-- Experience -->
-  <section id="work" class="py-7">
-    <h2 class="text-[13px] uppercase tracking-[0.18em] text-gray-400 mb-5 flex items-center gap-3 after:content-[''] after:flex-1 after:h-px after:bg-gray-200">experience</h2>
-    <div class="relative border-l border-gray-200 ml-1.5">
-      {work.map((e) => (
-        <div class="relative pb-6 pl-6 before:content-[''] before:absolute before:left-[-5px] before:top-1.5 before:w-[9px] before:h-[9px] before:rounded-full before:bg-blue-500 before:shadow-[0_0_0_4px_white]">
-          <div class="text-[12px] text-gray-400 mb-0.5">{e.period}</div>
-          <div>
-            <span class="font-semibold text-gray-900">{e.role}</span>
-            <span class="text-gray-400"> · </span>
-            {e.orgUrl ? (
-              <a class="text-blue-600" href={e.orgUrl} target="_blank" rel="noopener">{e.org}</a>
-            ) : (
-              <span class="text-blue-600">{e.org}</span>
-            )}
-          </div>
-          <p class="text-[15px] text-gray-500 mt-1.5">{e.blurb}</p>
-        </div>
-      ))}
-    </div>
-  </section>
-
-  <!-- Education -->
-  <section id="education" class="py-7">
-    <h2 class="text-[13px] uppercase tracking-[0.18em] text-gray-400 mb-5 flex items-center gap-3 after:content-[''] after:flex-1 after:h-px after:bg-gray-200">education</h2>
-    <div class="relative border-l border-gray-200 ml-1.5">
-      {education.map((e) => (
-        <div class="relative pb-6 pl-6 before:content-[''] before:absolute before:left-[-5px] before:top-1.5 before:w-[9px] before:h-[9px] before:rounded-full before:bg-blue-500 before:shadow-[0_0_0_4px_white]">
-          <div class="text-[12px] text-gray-400 mb-0.5">{e.period}</div>
-          <div>
-            <span class="font-semibold text-gray-900">{e.role}</span>
-            <span class="text-gray-400"> · </span>
-            {e.orgUrl ? (
-              <a class="text-blue-600" href={e.orgUrl} target="_blank" rel="noopener">{e.org}</a>
-            ) : (
-              <span class="text-blue-600">{e.org}</span>
-            )}
-          </div>
-          <p class="text-[15px] text-gray-500 mt-1.5">{e.blurb}</p>
-        </div>
-      ))}
-    </div>
-  </section>
-
-  <!-- Projects -->
-  <section id="projects" class="py-7">
-    <h2 class="text-[13px] uppercase tracking-[0.18em] text-gray-400 mb-5 flex items-center gap-3 after:content-[''] after:flex-1 after:h-px after:bg-gray-200">projects</h2>
-    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-      {projects.map((p) => (
-        <a class="block bg-white border border-gray-200 rounded-xl p-4 transition-all hover:border-blue-400 hover:-translate-y-0.5" href={p.href} target="_blank" rel="noopener">
-          <div class="font-semibold text-gray-900 mb-1">{p.name}</div>
-          <p class="text-[14px] text-gray-500 mb-3">{p.blurb}</p>
-          <div class="flex flex-wrap gap-1.5">
-            {p.tags.map((t) => <span class="text-[11px] text-blue-600 bg-blue-50 rounded-md px-2 py-0.5">{t}</span>)}
-          </div>
-        </a>
-      ))}
-    </div>
-  </section>
-
-  <!-- Writing -->
-  {posts.length > 0 && (
-    <section id="writing" class="py-7">
-      <h2 class="text-[13px] uppercase tracking-[0.18em] text-gray-400 mb-5 flex items-center gap-3 after:content-[''] after:flex-1 after:h-px after:bg-gray-200">writing</h2>
-      <ul class="list-none p-0 m-0">
-        {posts.map((post) => (
-          <li class="py-4 border-b border-gray-100 last:border-b-0">
-            <div class="text-[12px] text-gray-400">{fmt(post.data.date)}</div>
-            <h3 class="my-1 text-[19px] font-semibold">
-              <a href={`/blog/${post.id}/`} class="text-black hover:text-blue-600 transition-colors">{post.data.title}</a>
-            </h3>
-            <p class="text-[15px] text-gray-500 m-0">{post.data.description}</p>
-          </li>
-        ))}
-      </ul>
-      <p class="mt-4"><a href="/blog" class="text-blue-600 hover:text-blue-800">all posts →</a></p>
-    </section>
-  )}
-
-  <!-- Publications -->
-  {publications.length > 0 && (
-    <section id="publications" class="py-7">
-      <h2 class="text-[13px] uppercase tracking-[0.18em] text-gray-400 mb-5 flex items-center gap-3 after:content-[''] after:flex-1 after:h-px after:bg-gray-200">publications</h2>
-      {publications.map((pub) => (
-        <div class="border-l-[3px] border-blue-400 py-1 pl-3.5 mb-3.5">
-          <div class="font-medium text-gray-900">
-            {pub.href ? <a href={pub.href} target="_blank" rel="noopener" class="text-black hover:text-blue-600">{pub.title}</a> : pub.title}
-          </div>
-          <div class="text-blue-600 text-[14px]">{pub.venue}</div>
-          <div class="text-gray-400 text-[14px]">{pub.authors}</div>
-        </div>
-      ))}
-    </section>
-  )}
+  <PostList />
 </Base>

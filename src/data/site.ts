@@ -8,20 +8,21 @@ export const profile = {
   tagline: 'ML Systems · GPU Kernels · LLM Training',
   // one or two sentences for the About section
   about:
-    "I work at the intersection of machine learning and systems — writing GPU kernels, " +
-    "tuning inference paths, and training large models. Recently focused on quantization, " +
-    "ROCm/CUDA kernels, and reinforcement-learning post-training for LLMs and VLMs.",
+    "I'm an ML systems engineer at AMD, working on large-scale MoE training, LLM inference, " +
+    "and low-precision GPU kernels. I've delivered MXFP8 training and serving optimizations " +
+    "across AMD CDNA3/CDNA4 systems, scaled DeepSeek-V3 to 1,024 GPUs, and contributed " +
+    "performance improvements to PyTorch, TorchAO, and vLLM.",
   location: 'San Jose, CA',
   photo: '/shekhar.jpg',
-  resume: 'https://www.overleaf.com/read/ygwkpfgcysym#cf0b59',
-  email: '', // optional: set to show a mailto link, e.g. 'you@example.com'
+  resume: '/Shekhar_Pandey_Resume.pdf',
+  email: 'shekharptx@gmail.com',
 };
 
 export const socials = [
   { label: 'GitHub', href: 'https://github.com/indianspeedster' },
-  { label: 'LinkedIn', href: 'https://www.linkedin.com/in/shekhar-p-aa90249a/' },
+  { label: 'LinkedIn', href: 'https://www.linkedin.com/in/indianspeedster/' },
+  { label: 'X', href: 'https://x.com/indianspeedster' },
   { label: 'LeetCode', href: 'https://leetcode.com/indianspeedster' },
-  // { label: 'Twitter', href: 'https://twitter.com/your_handle' },
 ];
 
 export type Experience = {
@@ -30,16 +31,26 @@ export type Experience = {
   orgUrl?: string;
   period: string;
   blurb: string;
+  // optional highlights, shown as a bulleted list under the blurb
+  points?: string[];
 };
 
 export const work: Experience[] = [
   {
-    role: 'Sr. Software Development Engineer',
+    role: 'Member of Technical Staff',
     org: 'AMD',
     orgUrl: 'https://www.amd.com',
     period: 'Jan 2025 – Present · San Jose, CA',
     blurb:
-      'GPU performance & ML systems. Optimized large-scale MoE pre-training on MI325X clusters — FP8 grouped-GEMM kernels and Expert Parallelism hitting 96% scaling efficiency at 1K GPUs for DeepSeek-V3-671B. Co-authored TorchTitan/Primus-Turbo results showing a 2.77× end-to-end training speedup, shipped FP8/MXFP8 kernels to TorchAO (25–27% kernel speedup), and enabled Day-0 support for gpt-oss-120B/20B on ROCm via vLLM and PyTorch.',
+      'Promoted from Senior Software Development Engineer. Distributed training, LLM inference, and GPU kernel performance.',
+    points: [
+      'MXFP8 training for DeepSeek-V3: delivered the full MoE training path in TorchTitan/TorchAO with a FlyDSL backend on MI355X, now at 1.2× BF16 end-to-end. Designed a ragged MXFP8 wgrad grouped GEMM reaching 2.27 PFLOP/s (45% of peak), 13× the prior Triton kernel and up to 3× BF16 hipBLASLt; being upstreamed to PyTorch Inductor.',
+      'Large-scale MoE pre-training: scaled DeepSeek-V3 671B to 1,024 MI325X GPUs at 96% scaling efficiency with Expert Parallelism and FP8 grouped GEMM kernels; worked with the AMD and Meta PyTorch teams on TorchTitan/Primus-Turbo and co-authored published results showing a 2.77× end-to-end training speedup.',
+      'MXFP8/MXFP4 kernels: built CDNA4 forward and dgrad grouped GEMMs with XOR-swizzled LDS layouts, ping-pong software pipelining, XCD swizzle for L2 locality, fused quantization epilogues, and Split-K for K-heavy shapes, gated by bit-exact operator parity tests.',
+      'RL post-training on ROCm: led end-to-end enablement of vime on MI355X across Megatron training and vLLM rollout, validated the GRPO pipeline, upstreamed ROCm fixes, shipped a prebuilt container, and published the work on the vLLM blog.',
+      'Inference: delivered launch-day ROCm support for OpenAI gpt-oss-120B/20B on MI300X/MI355X, and built TTFT, throughput, concurrency, and Kineto/Perfetto profiling workflows plus MoE prefill/decode roofline studies that guided serving and kernel decisions.',
+      "Recognition: Next 5% Award presented by AMD's CEO, plus 2 Executive Spotlight and 6 Spotlight awards in my first year.",
+    ],
   },
   {
     role: 'Machine Learning Intern',
@@ -47,7 +58,7 @@ export const work: Experience[] = [
     orgUrl: 'https://bytez.com',
     period: 'Feb 2024 – May 2024 · San Francisco, CA',
     blurb:
-      'Fine-tuned CodeLlama-13B into a text-to-Cypher model behind an interactive chat feature, and built semantic search with a Neo4j vector store over ~3M research papers.',
+      'Fine-tuned Code Llama 13B into a text-to-Cypher model for natural-language graph querying, and built semantic search over a Neo4j graph of about 3 million research papers.',
   },
   {
     role: 'Graduate Teaching Assistant — ECE-GY 6143 Machine Learning',
@@ -74,12 +85,12 @@ export const work: Experience[] = [
       'Implemented few-shot intent classification with BERT to demonstrate the impact of synonym-based text augmentation, and built educational materials on the role of complete methodology reporting in reproducibility — incorporated into the UCSC curriculum.',
   },
   {
-    role: 'Software Engineer',
+    role: 'Software Development Engineer',
     org: 'Bosch Global Software Technologies',
     orgUrl: 'https://www.bosch-softwaretechnologies.com/en/',
     period: 'Jan 2021 – Jul 2022 · Coimbatore, India',
     blurb:
-      'Built a pre-check build tool that cut missing-system-constant failure identification from 1.5 hours to 30 seconds. Automated end-to-end testing with 12 peer groups (80% less testing time) and integrated testing tools to improve synchronization.',
+      'Built Python automation frameworks for end-to-end testing across 12+ peer groups, cutting functional test time by 80% through scripted failure-case simulation. Also built a pre-check build tool that cut missing-system-constant failure identification from 1.5 hours to 30 seconds.',
   },
   {
     role: 'Machine Learning Intern',
@@ -144,15 +155,25 @@ export type Publication = {
   title: string;
   href?: string;
   venue: string;
-  authors: string;
+  authors?: string;
 };
 
 export const publications: Publication[] = [
   {
+    title: 'AMD ROCm Blogs: six posts on MI355X occupancy, gpt-oss day-0 enablement, DeepSeek-V3 profiling, Llama 4 inference, AITER, and Gemma 3 deployment',
+    href: 'https://rocm.blogs.amd.com/authors/shekhar-pandey.html',
+    venue: 'rocm.blogs.amd.com',
+  },
+  {
+    title: 'vime + ROCm: End-to-End RL Post-Training on AMD Instinct GPUs',
+    href: 'https://vllm.ai/blog/2026-07-10-vime-rocm',
+    venue: 'vLLM Blog, July 2026',
+  },
+  {
     title:
       '[Re] Exploring the Role of Grammar and Word Choice in Bias Toward African American English (AAE) in Hate Speech Classification',
     href: 'https://rescience.github.io/',
-    venue: 'ReScience C, Vol. 9, Issue 2, Article 35',
+    venue: 'ReScience C, Vol. 9, Issue 2, Article 35 · poster at NeurIPS 2023',
     authors: 'Priyanka Bose*, Chandra Shekhar Pandey*, Fraida Fund',
   },
 ];

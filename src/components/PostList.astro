@@ -1,0 +1,24 @@
+---
+import { getCollection } from 'astro:content';
+
+const posts = (await getCollection('blog'))
+  .filter((p) => !p.data.draft)
+  .sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf());
+
+const fmt = (d: Date) =>
+  d.toLocaleDateString('en-US', { year: 'numeric', month: 'long', timeZone: 'UTC' });
+---
+
+{posts.length === 0 ? (
+  <p class="muted">No posts yet.</p>
+) : (
+  <ul class="post-list">
+    {posts.map((post) => (
+      <li>
+        <h2><a href={`/blog/${post.id}/`}>{post.data.title}</a></h2>
+        <div class="date">{fmt(post.data.date)}</div>
+        <p>{post.data.description}</p>
+      </li>
+    ))}
+  </ul>
+)}

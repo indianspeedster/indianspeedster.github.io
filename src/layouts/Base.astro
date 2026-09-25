@@ -22,17 +22,20 @@ const {
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>{title}</title>
     <meta name="description" content={description} />
-    <meta name="theme-color" content="#ffffff" />
+    <meta name="theme-color" content="#fffff8" />
+    <link rel="preload" href="/fonts/et-book/et-book-roman-line-figures.woff" as="font" type="font/woff" crossorigin />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <meta property="og:title" content={title} />
     <meta property="og:description" content={description} />
     <meta property="og:type" content="website" />
   </head>
   <body>
-    <Nav />
-    <main class="max-w-[760px] mx-auto px-5">
-      <slot />
-    </main>
-    <Footer />
+    <div class="frame">
+      <Nav />
+      <main class="column">
+        <slot />
+      </main>
+      <Footer />
+    </div>
   </body>
 </html>

@@ -14,19 +14,13 @@ const { post } = Astro.props;
 const { Content } = await render(post);
 
 const fmt = (d: Date) =>
-  d.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+  d.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric', timeZone: 'UTC' });
 ---
 
 <Base title={`${post.data.title} · Shekhar Pandey`} description={post.data.description}>
-  <article class="py-12">
-    <a class="text-[14px] text-gray-400 hover:text-blue-600 transition-colors" href="/blog">← all posts</a>
-    <h1 class="text-[32px] font-semibold text-black mt-4 mb-1 tracking-tight">{post.data.title}</h1>
-    <div class="text-[13px] text-gray-400 mb-8">
-      {fmt(post.data.date)}
-      {post.data.tags.length > 0 && <> · {post.data.tags.join(', ')}</>}
-    </div>
-    <div class="prose">
-      <Content />
-    </div>
+  <article class="prose">
+    <h1>{post.data.title}</h1>
+    <div class="date" style="margin-bottom: 32px;">{fmt(post.data.date)}</div>
+    <Content />
   </article>
 </Base>

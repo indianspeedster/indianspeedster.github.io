@@ -1,43 +1,11 @@
 ---
 import Base from '../../layouts/Base.astro';
-import { getCollection } from 'astro:content';
-
-const posts = (await getCollection('blog'))
-  .filter((p) => !p.data.draft)
-  .sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf());
-
-const fmt = (d: Date) =>
-  d.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+import PostList from '../../components/PostList.astro';
 ---
 
 <Base title="Blog · Shekhar Pandey" description="Writing on ML systems, GPU kernels, and LLMs.">
-  <div class="pt-16 pb-8">
-    <h1 class="text-[32px] font-semibold text-black tracking-tight">Blog</h1>
-    <p class="text-gray-500 text-[17px] mt-1">Writing on ML systems, GPU kernels, and LLMs.</p>
-  </div>
+  <h1 style="font-size: 40px; margin: 0 0 8px;">Blog</h1>
+  <p class="muted" style="margin: 0;">Writing on ML systems, GPU kernels, and LLMs.</p>
 
-  {posts.length === 0 ? (
-    <p class="text-gray-400">No posts yet.</p>
-  ) : (
-    <ul class="list-none p-0 m-0">
-      {posts.map((post) => (
-        <li class="py-5 border-b border-gray-100 last:border-b-0">
-          <div class="text-[12px] text-gray-400 mb-0.5">{fmt(post.data.date)}</div>
-          <h3 class="my-1 text-[20px] font-semibold">
-            <a href={`/blog/${post.id}/`} class="text-black hover:text-blue-600 transition-colors">{post.data.title}</a>
-          </h3>
-          <p class="text-[15px] text-gray-500 m-0">{post.data.description}</p>
-          {post.data.tags.length > 0 && (
-            <div class="flex flex-wrap gap-1.5 mt-2">
-              {post.data.tags.map((t: string) => <span class="text-[11px] text-blue-600 bg-blue-50 rounded-md px-2 py-0.5">{t}</span>)}
-            </div>
-          )}
-        </li>
-      ))}
-    </ul>
-  )}
-
-  <p class="mt-6 pb-10">
-    <a href="/" class="text-gray-400 hover:text-blue-600 transition-colors text-[14px]">← home</a>
-  </p>
+  <PostList />
 </Base>

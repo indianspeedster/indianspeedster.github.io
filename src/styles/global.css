@@ -1,165 +1,260 @@
 @import "tailwindcss";
-@plugin "@tailwindcss/typography";
+
+/* ---- Fonts ----
+   ET Book (MIT, github.com/edwardtufte/et-book), self-hosted from public/fonts. */
+@font-face {
+  font-family: "et-book";
+  src: url("/fonts/et-book/et-book-roman-line-figures.woff") format("woff");
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "et-book";
+  src: url("/fonts/et-book/et-book-display-italic-old-style-figures.woff") format("woff");
+  font-weight: normal;
+  font-style: italic;
+  font-display: swap;
+}
+@font-face {
+  font-family: "et-book";
+  src: url("/fonts/et-book/et-book-bold-line-figures.woff") format("woff");
+  font-weight: bold;
+  font-style: normal;
+  font-display: swap;
+}
 
 /* ---- Design tokens ----
    Shared by the page chrome and by in-post widgets (e.g. the occupancy
-   calculator), which reference these by name. Keep in sync with the Tailwind
-   utilities used in the layouts. */
+   calculator), which reference these by name. */
 :root {
-  --sans: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  --mono: Monaco, Consolas, "Fira Code", "Fira Mono", Menlo, "DejaVu Sans Mono", monospace;
+  --serif: "et-book", Palatino, "Palatino Linotype", "Book Antiqua", Georgia, serif;
+  --sans: "Gill Sans", "Gill Sans MT", Calibri, "Segoe UI", system-ui, sans-serif;
+  --mono: Consolas, Menlo, Monaco, "Liberation Mono", "DejaVu Sans Mono", monospace;
 
-  --text: #111827;        /* gray-900 */
-  --text-dim: #6b7280;    /* gray-500 */
-  --text-faint: #9ca3af;  /* gray-400 */
+  --page: #fffff8;
+  --text: #111111;
+  --text-dim: #555555;
+  --text-faint: #888888;
 
   --bg-card: #ffffff;
-  --bg-soft: #f9fafb;     /* gray-50  */
-  --border: #e5e7eb;      /* gray-200 */
+  --bg-soft: #f6f5ee;
+  --border: #e3e1d6;
 
-  --accent: #2563eb;      /* blue-600 */
-  --accent-soft: #eff6ff; /* blue-50  */
+  --accent: #a00000;
+  --accent-soft: #f7ecea;
 }
 
 /* ---- Base ---- */
-@layer base {
-  body {
-    @apply bg-white text-gray-800 antialiased;
-    font-family: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-    font-size: 16px;
-    line-height: 1.625;
-  }
-
-  h1, h2, h3, h4, h5, h6 {
-    @apply font-semibold text-black;
-  }
-
-  a {
-    @apply text-blue-600 no-underline transition-colors;
-  }
-  a:hover {
-    @apply text-blue-800;
-  }
-
-  code {
-    font-family: Monaco, Consolas, "Fira Code", "Fira Mono", Menlo, "DejaVu Sans Mono", monospace;
-    font-size: 0.88em;
-  }
+html {
+  background: var(--page);
+}
+body {
+  background: var(--page);
+  color: var(--text);
+  font-family: var(--serif);
+  font-size: 20px;
+  line-height: 1.6;
+  font-kerning: normal;
+  text-rendering: optimizeLegibility;
+}
+@media (max-width: 640px) {
+  body { font-size: 18px; }
+  .prose h1, main > h1 { font-size: 32px !important; }
+  .prose h2 { font-size: 26px; }
 }
 
-/* ---- Prose (blog content) — matching Aleksa's exact typography ---- */
-.prose {
-  @apply text-gray-700 leading-relaxed;
+h1, h2, h3, h4 {
+  font-weight: normal;
+  line-height: 1.2;
+  color: var(--text);
+}
+
+a {
+  color: var(--accent);
+  text-decoration: none;
+}
+a:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+code, pre, kbd {
+  font-family: var(--mono);
+}
+
+/* ---- Page frame ----
+   A single left-leaning reading column, as on siboehm.com / Tufte CSS. */
+.frame {
+  max-width: 1200px;
+  padding: 0 16px;
+}
+@media (min-width: 900px) {
+  .frame { padding-left: 10%; padding-right: 5%; }
+}
+.column {
+  max-width: 700px;
+}
+
+.site-nav {
+  padding-top: 48px;
+  padding-bottom: 40px;
+  display: flex;
+  gap: 28px;
+  font-family: var(--sans);
   font-size: 16px;
-  max-width: none;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
 }
+
+.site-footer {
+  margin-top: 64px;
+  padding: 24px 0 48px;
+  font-size: 16px;
+  color: var(--text-faint);
+}
+
+.muted { color: var(--text-dim); }
+.date { color: var(--text-dim); font-size: 17px; }
+
+/* ---- Post lists (home and /blog) ---- */
+.post-list {
+  list-style: none;
+  padding: 0;
+  margin: 40px 0 0;
+}
+.post-list li { margin-bottom: 36px; }
+.post-list h2 {
+  font-size: 28px;
+  margin: 0 0 4px;
+}
+.post-list p { margin: 6px 0 0; }
+
+/* ---- About page ---- */
+.about h2 {
+  font-size: 28px;
+  font-style: italic;
+  margin: 48px 0 16px;
+}
+.entry { margin-bottom: 24px; }
+.entry p { margin: 4px 0 0; }
+.entry .meta { color: var(--text-dim); font-size: 17px; }
+.entry .points { list-style: disc; padding-left: 24px; margin: 8px 0 0; }
+.entry .points li { margin-bottom: 6px; }
+
+/* ---- Prose (blog content) ---- */
 .prose h1 {
-  @apply text-[32px] font-semibold text-black mt-0 mb-2 tracking-tight;
+  font-size: 40px;
+  margin: 0 0 8px;
 }
 .prose h2 {
-  @apply text-xl font-semibold text-black mt-9 mb-3;
+  font-size: 30px;
+  font-style: italic;
+  margin: 48px 0 12px;
 }
 .prose h3 {
-  @apply text-lg font-semibold text-black mt-6 mb-2;
+  font-size: 24px;
+  font-style: italic;
+  margin: 32px 0 8px;
 }
-.prose p {
-  @apply mb-5;
-}
+.prose p { margin: 0 0 20px; }
 .prose a {
-  @apply text-blue-600 underline underline-offset-[3px] hover:text-blue-800;
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
 }
-.prose strong {
-  @apply text-black;
-}
-.prose code {
-  font-family: Monaco, Consolas, "Fira Code", "Fira Mono", Menlo, "DejaVu Sans Mono", monospace;
-  @apply bg-gray-100 border border-gray-200 rounded-[5px] px-1.5 py-0.5 text-[0.88em];
-}
-.prose pre {
-  @apply bg-[#f8f9fa] border border-[#e9ecef] rounded-[6px] p-4 overflow-x-auto my-4;
-  font-size: 14px;
-  line-height: 1.5;
-}
-.prose pre code {
-  @apply bg-transparent border-none p-0;
-}
-.prose blockquote {
-  @apply border-l-[3px] border-blue-400 m-0 pl-4 text-gray-500;
-}
-.prose img {
-  @apply block max-w-full h-auto my-7 mx-auto rounded-xl bg-white p-3 border border-gray-200;
-}
+.prose strong { font-weight: bold; }
 .prose ul, .prose ol {
-  @apply my-4 pl-6;
+  margin: 0 0 20px;
+  padding-left: 28px;
 }
-.prose li {
-  @apply mb-1;
-}
-.prose table {
-  @apply w-full border-collapse my-6;
-}
-.prose th {
-  @apply bg-gray-50 border border-gray-200 px-4 py-2 text-left font-semibold text-sm;
-}
-.prose td {
-  @apply border border-gray-200 px-4 py-2 text-sm;
+.prose ul { list-style: disc; }
+.prose ol { list-style: decimal; }
+.prose li { margin-bottom: 6px; }
+.prose hr {
+  border: 0;
+  border-top: 1px solid var(--border);
+  margin: 40px 0;
 }
 
-/* ---- Callout boxes ---- */
-.callout {
-  @apply my-4 p-4 rounded-lg border-l-4 text-sm leading-relaxed;
+.prose blockquote {
+  margin: 24px 0;
+  padding: 2px 0 2px 20px;
+  border-left: 3px solid var(--border);
+  color: var(--text);
 }
-.callout-heading {
-  @apply flex items-center mb-1 font-semibold;
-}
-.callout-heading .emoji {
-  @apply mr-2;
-}
+.prose blockquote p:last-child { margin-bottom: 0; }
 
-.callout-info {
-  background-color: #e3f2fd;
-  border-left-color: #2196f3;
-  color: #0d47a1;
-}
-
-.callout-note {
-  background-color: #f5f5f5;
-  border-left-color: #757575;
-  color: #424242;
-}
-
-.callout-warn {
-  background-color: #fff3e0;
-  border-left-color: #ff9800;
-  color: #e65100;
-}
-
-/* ---- Blockquote tip variant ---- */
-.prose blockquote.callout-tip {
-  @apply bg-blue-50 border-blue-400 text-blue-900 rounded-lg p-4 my-4;
-  border-left-width: 4px;
-}
-
-/* ---- Inline code in prose ---- */
 .prose :not(pre) > code {
+  font-size: 0.8em;
+  background: var(--bg-soft);
+  padding: 1px 4px;
+  border-radius: 3px;
   word-break: break-word;
 }
+.prose pre {
+  font-size: 15px;
+  line-height: 1.5;
+  background: var(--bg-soft);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 14px 16px;
+  margin: 0 0 24px;
+  overflow-x: auto;
+}
+.prose pre code { background: none; padding: 0; font-size: inherit; }
 
-/* ---- Figures ----
-   Emitted by the rehype-figure plugin: a standalone image in a paragraph
+.prose table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0 0 28px;
+  font-size: 17px;
+  display: block;
+  overflow-x: auto;
+}
+.prose th, .prose td {
+  padding: 6px 12px 6px 0;
+  text-align: left;
+  vertical-align: top;
+  border-bottom: 1px solid var(--border);
+}
+.prose th {
+  font-weight: normal;
+  font-style: italic;
+  border-bottom: 1px solid var(--text-faint);
+}
+
+/* Images and figures. Diagrams carry their own white background, so they
+   sit on the page as a plain white panel. */
+.prose img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: 28px auto;
+}
+
+/* Emitted by the rehype-figure plugin: a standalone image in a paragraph
    becomes <figure><img><figcaption>, numbered per post. */
-.prose figure {
-  @apply my-7;
-}
-.prose figure img {
-  @apply my-0;
-}
+.prose figure { margin: 32px 0; }
+.prose figure img { margin: 0 auto; }
 .prose figcaption {
-  @apply text-gray-500 text-[13.5px] leading-normal mt-2.5 px-1;
+  font-size: 16px;
+  line-height: 1.45;
+  color: var(--text-dim);
+  margin-top: 10px;
 }
-.prose figcaption .fig-label {
-  @apply text-gray-400 font-semibold not-italic;
+.prose figcaption .fig-label { font-style: italic; }
+.prose figcaption code { font-size: 0.85em; }
+
+/* ---- Callout boxes (available to posts) ---- */
+.callout {
+  margin: 24px 0;
+  padding: 12px 16px;
+  border-left: 3px solid var(--border);
+  background: var(--bg-soft);
+  font-size: 18px;
 }
-.prose figcaption code {
-  @apply text-[0.9em];
-}
+.callout-heading { font-style: italic; margin-bottom: 4px; }
+.callout-info { border-left-color: #6b8fb3; }
+.callout-note { border-left-color: var(--text-faint); }
+.callout-warn { border-left-color: #c77d2e; }

@@ -1,0 +1,77 @@
+---
+import Base from '../layouts/Base.astro';
+import { profile, socials, work, education, projects, publications } from '../data/site';
+import type { Experience } from '../data/site';
+
+const links = [
+  ...socials,
+  ...(profile.resume ? [{ label: 'Resume', href: profile.resume }] : []),
+  ...(profile.email ? [{ label: 'Email', href: `mailto:${profile.email}` }] : []),
+];
+
+const sections: { title: string; items: Experience[] }[] = [
+  { title: 'Experience', items: work },
+  { title: 'Education', items: education },
+];
+---
+
+<Base title="About · Shekhar Pandey">
+  <div class="about">
+    <h1 style="font-size: 40px; margin: 0 0 20px;">About</h1>
+    {profile.photo && (
+      <img src={profile.photo} alt={profile.name} style="width: 180px; border-radius: 6px; margin: 0 0 20px;" />
+    )}
+    <p style="margin: 0 0 12px;">{profile.about}</p>
+    <p class="muted" style="margin: 0;">
+      {links.map((l, i) => (
+        <>
+          {i > 0 && ' · '}
+          <a href={l.href} target="_blank" rel="noopener">{l.label}</a>
+        </>
+      ))}
+    </p>
+
+    {sections.map((sec) => (
+      <section>
+        <h2>{sec.title}</h2>
+        {sec.items.map((e) => (
+          <div class="entry">
+            <div>
+              {e.role}, {e.orgUrl ? <a href={e.orgUrl} target="_blank" rel="noopener">{e.org}</a> : e.org}
+            </div>
+            <div class="meta">{e.period}</div>
+            <p>{e.blurb}</p>
+            {e.points && (
+              <ul class="points">
+                {e.points.map((pt) => <li>{pt}</li>)}
+              </ul>
+            )}
+          </div>
+        ))}
+      </section>
+    ))}
+
+    <section>
+      <h2>Projects</h2>
+      {projects.map((p) => (
+        <div class="entry">
+          <div><a href={p.href} target="_blank" rel="noopener">{p.name}</a></div>
+          <p>{p.blurb}</p>
+        </div>
+      ))}
+    </section>
+
+    {publications.length > 0 && (
+      <section>
+        <h2>Writing and publications</h2>
+        {publications.map((pub) => (
+          <div class="entry">
+            <div>{pub.href ? <a href={pub.href} target="_blank" rel="noopener">{pub.title}</a> : pub.title}</div>
+            {pub.authors && <div class="meta">{pub.authors}</div>}
+            <div class="meta"><em>{pub.venue}</em></div>
+          </div>
+        ))}
+      </section>
+    )}
+  </div>
+</Base>
