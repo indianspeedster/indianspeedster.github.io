@@ -84,16 +84,15 @@ code, pre, kbd {
 }
 
 /* ---- Page frame ----
-   A single left-leaning reading column, as on siboehm.com / Tufte CSS. */
+   One centred reading column. Figures and code blocks may break out wider
+   than the text on large screens (see "Wide elements" below). */
 .frame {
-  max-width: 1200px;
+  max-width: 760px;
+  margin: 0 auto;
   padding: 0 16px;
 }
-@media (min-width: 900px) {
-  .frame { padding-left: 10%; padding-right: 5%; }
-}
 .column {
-  max-width: 700px;
+  max-width: 760px;
 }
 
 .site-nav {
@@ -258,3 +257,18 @@ code, pre, kbd {
 .callout-info { border-left-color: #6b8fb3; }
 .callout-note { border-left-color: var(--text-faint); }
 .callout-warn { border-left-color: #c77d2e; }
+
+/* ---- Wide elements ----
+   On wide screens, let diagrams and code blocks use more of the page than
+   the ~75-character text measure, centred on the column. */
+@media (min-width: 1100px) {
+  .prose figure,
+  .prose > pre {
+    width: min(1040px, calc(100vw - 64px));
+    max-width: none;
+    position: relative;
+    left: 50%;
+    transform: translateX(-50%);
+  }
+  .prose figcaption { max-width: 728px; margin-left: auto; margin-right: auto; }
+}
